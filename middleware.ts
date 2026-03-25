@@ -2,31 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const ALLOWED_IP = '128.127.121.38';
 
-// Routes that require IP allowlist
 const PROTECTED = ['/admin', '/api/licenses', '/api/issue', '/api/reset-ip'];
 
 function getIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-real-ip') ??
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    '0.0.0.0'
-  );
+  const forwarded = req.headers.get('x-forwarded-for');
+  const realIp = req.headers.get('x-real-ip');
+  
+  if (realIp) return realIp;
+  if (forwarded) return forwarded.split(',')[0].trim();
+  
+  return req.ip ?? '0.0.0.0';
 }
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isProtected = PROTECTED.some(p => pathname.startsWith(p));
-  if (!isProtected) return NextResponse.next();
+  
+  const isProtected = PROTECTED.some(p => 
+    pathname === p || pathname.startsWith(`${p}/`)
+  );
 
-  // /api/validate is intentionally NOT in PROTECTED — FiveM servers call it
+  if (!isProtected) {
+    return NextResponse.next();
+  }
+
   const ip = getIp(req);
+
   if (ip !== ALLOWED_IP) {
-    return new NextResponse('Forbidden', { status: 403 });
+    return new NextResponse(
+      JSON.stringify({ error: 'Forbidden', detectedIp: ip }), 
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/licenses/:path*', '/api/issue/:path*', '/api/reset-ip/:path*'],
+  matcher: [
+    '/admin/:path*',
+    '/api/licenses/:path*',
+    '/api/issue/:path*',
+    '/api/reset-ip/:path*',
+  ],
 };
