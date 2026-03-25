@@ -1,16 +1,109 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const FEATURES = [
+  {
+    category: "Combat Protection",
+    color: "from-red-500 to-orange-500",
+    icon: "⚔️",
+    items: [
+      {
+        label: "Godmode, invincibility & instant health restore",
+        desc: "Detects players who take no damage, have locked health values, or restore HP instantly — all classic godmode signatures.",
+      },
+      {
+        label: "Aimbot, silent aim, triggerbot & headshot ratio",
+        desc: "Tracks aim angles, snap speeds, and headshot percentages to flag inhuman accuracy and silent aim injections.",
+      },
+      {
+        label: "Weapon hacks (infinite ammo, rapid fire, blacklist)",
+        desc: "Monitors ammo counts, fire rate deltas, and blocks blacklisted weapons from being spawned or used.",
+      },
+      {
+        label: "Damage modifiers & magic bullet detection",
+        desc: "Compares dealt damage against weapon baselines and flags impossible one-shot kills or damage multipliers.",
+      },
+    ],
+  },
+  {
+    category: "Movement Protection",
+    color: "from-cyan-500 to-blue-500",
+    icon: "🏃",
+    items: [
+      {
+        label: "Speed hacks, teleport & noclip (foot, vehicle, swim)",
+        desc: "Validates movement deltas per tick across all movement modes — foot, vehicle, and swimming — to catch speed and teleport cheats.",
+      },
+      {
+        label: "Fly hacks, super jump & freecam detection",
+        desc: "Checks vertical velocity, air time, and camera detachment to detect flying, super jumps, and freecam exploits.",
+      },
+      {
+        label: "Vehicle spawn control & blacklist (Rhino, Lazer, etc.)",
+        desc: "Prevents spawning of blacklisted vehicles like tanks and jets, and monitors for unauthorized vehicle creation events.",
+      },
+    ],
+  },
+  {
+    category: "Cheat Detection",
+    color: "from-purple-500 to-pink-500",
+    icon: "🔍",
+    items: [
+      {
+        label: "Cheat menu & executor scanner (memory signatures)",
+        desc: "Scans for known cheat menu signatures and executor fingerprints in memory to identify injected software.",
+      },
+      {
+        label: "Behavioral profiling (statistical + entropy analysis)",
+        desc: "Builds a behavioral profile per player using statistical models and entropy scoring to catch subtle, low-and-slow cheating.",
+      },
+      {
+        label: "Stealth cheat detection (slow-burn 2h scoring)",
+        desc: "Accumulates suspicion scores over a 2-hour window to catch cheaters who deliberately stay under per-event thresholds.",
+      },
+      {
+        label: "Anti-tamper (hook detection, debug library monitoring)",
+        desc: "Detects function hooks, debug library loads, and client-side tampering attempts that indicate active cheat injection.",
+      },
+    ],
+  },
+  {
+    category: "Server Protection",
+    color: "from-green-500 to-emerald-500",
+    icon: "🛡️",
+    items: [
+      {
+        label: "Explosion & entity spam protection",
+        desc: "Rate-limits explosion events and entity creation to prevent server-side lag exploits and crash attempts.",
+      },
+      {
+        label: "Chat filter, VPN check & new account detection",
+        desc: "Filters toxic chat, flags VPN/proxy connections, and applies extra scrutiny to newly created accounts.",
+      },
+      {
+        label: "Discord alerts, screenshots & database ban system",
+        desc: "Sends real-time Discord webhook alerts with evidence screenshots and logs all bans to a persistent database.",
+      },
+      {
+        label: "Bans persist across reconnects (token-based)",
+        desc: "Uses hardware and token fingerprinting so bans survive reconnects, name changes, and Steam account switches.",
+      },
+    ],
+  },
+];
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [open, setOpen] = useState(false);
+  const [tooltip, setTooltip] = useState<{ label: string; desc: string } | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
     let animationId: number;
 
     const resize = () => {
@@ -20,18 +113,8 @@ export default function Home() {
     resize();
     window.addEventListener("resize", resize);
 
-    const PARTICLE_COUNT = 80;
-    const CONNECTION_DISTANCE = 150;
-
-    type Particle = {
-      x: number;
-      y: number;
-      vx: number;
-      vy: number;
-      radius: number;
-    };
-
-    const particles: Particle[] = Array.from({ length: PARTICLE_COUNT }, () => ({
+    type Particle = { x: number; y: number; vx: number; vy: number; radius: number };
+    const particles: Particle[] = Array.from({ length: 80 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.6,
@@ -41,63 +124,58 @@ export default function Home() {
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(99,102,241,0.7)";
         ctx.fill();
-
         for (let j = i + 1; j < particles.length; j++) {
           const q = particles[j];
           const dx = p.x - q.x;
           const dy = p.y - q.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < CONNECTION_DISTANCE) {
-            const alpha = 1 - dist / CONNECTION_DISTANCE;
+          if (dist < 150) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(99,102,241,${alpha * 0.4})`;
+            ctx.strokeStyle = `rgba(99,102,241,${(1 - dist / 150) * 0.4})`;
             ctx.lineWidth = 0.8;
             ctx.stroke();
           }
         }
       }
-
       animationId = requestAnimationFrame(draw);
     };
-
     draw();
-
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", resize);
     };
   }, []);
 
-  return (
-    <div className="relative flex flex-1 min-h-screen items-center justify-center overflow-hidden bg-[#050510]">
-      {/* Animated canvas background */}
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setTooltipPos({ x: e.clientX, y: e.clientY });
+  };
 
-      {/* Radial glow */}
+  return (
+    <div
+      className="relative flex flex-1 min-h-screen items-center justify-center overflow-hidden bg-[#050510]"
+      onMouseMove={handleMouseMove}
+    >
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15)_0%,transparent_70%)] pointer-events-none" />
 
-      {/* Content */}
+      {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
-        {/* Badge */}
         <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-indigo-300">
           FiveM Anticheat
         </span>
 
-        {/* Title */}
         <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-7xl">
           FTW
           <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -105,39 +183,106 @@ export default function Home() {
           </span>
         </h1>
 
-        {/* Subtitle */}
         <p className="max-w-md text-base text-zinc-400 leading-relaxed">
           Advanced anticheat protection for your FiveM server. Detect, prevent,
           and eliminate cheaters in real time.
         </p>
 
-        {/* Discord button */}
-        <a
-          href="https://discord.gg/Prr7FuvBJc"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative inline-flex items-center gap-3 rounded-full bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-105 active:scale-95"
-        >
-          {/* Discord icon */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5"
-            aria-hidden="true"
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          {/* Discord button */}
+          <a
+            href="https://discord.gg/Prr7FuvBJc"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 rounded-full bg-indigo-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all duration-300 hover:bg-indigo-500 hover:shadow-indigo-500/50 hover:scale-105 active:scale-95"
           >
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
-          </svg>
-          Join our Discord
-        </a>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5" aria-hidden="true">
+              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
+            </svg>
+            Join our Discord
+          </a>
 
-        {/* Decorative divider */}
+          {/* Features button */}
+          <button
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-indigo-300 backdrop-blur-sm transition-all duration-300 hover:bg-indigo-500/20 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95"
+          >
+            <span
+              className="inline-block transition-transform duration-300"
+              style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}
+            >
+              ✦
+            </span>
+            {open ? "Hide Features" : "View Features"}
+          </button>
+        </div>
+
+        {/* Feature list panel */}
+        <div
+          className="w-full max-w-3xl overflow-hidden transition-all duration-500 ease-in-out"
+          style={{
+            maxHeight: open ? "2000px" : "0px",
+            opacity: open ? 1 : 0,
+          }}
+        >
+          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
+            {FEATURES.map((cat) => (
+              <div
+                key={cat.category}
+                className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">{cat.icon}</span>
+                  <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${cat.color} bg-clip-text text-transparent`}>
+                    {cat.category}
+                  </span>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {cat.items.map((item) => (
+                    <li
+                      key={item.label}
+                      onMouseEnter={() => setTooltip(item)}
+                      onMouseLeave={() => setTooltip(null)}
+                      className="group flex items-start gap-2 cursor-default rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-white/10"
+                    >
+                      <span className={`mt-0.5 text-xs font-bold bg-gradient-to-r ${cat.color} bg-clip-text text-transparent shrink-0`}>
+                        [+]
+                      </span>
+                      <span className="text-xs text-zinc-300 group-hover:text-white transition-colors duration-150 leading-relaxed">
+                        {item.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 text-zinc-700 text-xs">
           <span className="h-px w-16 bg-zinc-700" />
           Protecting servers worldwide
           <span className="h-px w-16 bg-zinc-700" />
         </div>
       </div>
+
+      {/* Floating tooltip */}
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-50 max-w-xs rounded-xl border border-indigo-500/30 bg-[#0d0d1f]/95 backdrop-blur-md px-4 py-3 text-xs text-zinc-300 shadow-xl shadow-indigo-500/10 leading-relaxed"
+          style={{
+            left: tooltipPos.x + 16,
+            top: tooltipPos.y + 16,
+            transform:
+              tooltipPos.x > window.innerWidth - 280
+                ? "translateX(-110%)"
+                : undefined,
+          }}
+        >
+          <p className="font-semibold text-white mb-1">{tooltip.label}</p>
+          <p>{tooltip.desc}</p>
+        </div>
+      )}
     </div>
   );
 }
