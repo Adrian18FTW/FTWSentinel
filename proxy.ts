@@ -11,7 +11,7 @@ function getIp(req: NextRequest): string {
   if (realIp) return realIp;
   if (forwarded) return forwarded.split(',')[0].trim();
   
-  return req.ip ?? '0.0.0.0';
+  return '0.0.0.0';
 }
 
 export default function proxy(req: NextRequest) {
