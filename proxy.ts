@@ -14,7 +14,7 @@ function getIp(req: NextRequest): string {
   return req.ip ?? '0.0.0.0';
 }
 
-export function middleware(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   
   const isProtected = PROTECTED.some(p => 
@@ -28,17 +28,14 @@ export function middleware(req: NextRequest) {
   const ip = getIp(req);
 
   if (ip !== ALLOWED_IP) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Forbidden', detectedIp: ip }), 
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new NextResponse(null, { status: 403 });
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
+  proxy: [
     '/admin/:path*',
     '/api/licenses/:path*',
     '/api/issue/:path*',
