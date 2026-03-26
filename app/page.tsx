@@ -408,9 +408,9 @@ export default function Home() {
           <img
             src="https://r2.fivemanage.com/6i9Nw4DbfIJjqzti98x40/NewProject(1).png"
             alt="FTWSentinel logo"
-            className="h-14 w-14 sm:h-20 sm:w-20 object-contain drop-shadow-lg"
+            className="h-10 w-10 sm:h-14 sm:w-14 object-contain drop-shadow-lg"
           />
-          <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-7xl">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
             FTW
             <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
               Sentinel
