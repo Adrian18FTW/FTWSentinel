@@ -9,6 +9,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
