@@ -20,6 +20,15 @@ function isRateLimited(key: string): boolean {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const BLOCKED_USERNAMES = new Set([
+  'admin', 'administrator', 'root', 'superuser', 'su', 'sysadmin',
+  'system', 'support', 'help', 'helpdesk', 'staff', 'moderator', 'mod',
+  'owner', 'operator', 'postmaster', 'hostmaster', 'webmaster', 'noreply',
+  'no-reply', 'mailer', 'mailer-daemon', 'daemon', 'abuse', 'security',
+  'info', 'contact', 'billing', 'sales', 'dev', 'developer', 'test',
+  'tester', 'bot', 'api', 'service', 'null', 'void',
+]);
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { email?: unknown; password?: unknown; licenseKey?: unknown };
@@ -30,6 +39,9 @@ export async function POST(req: NextRequest) {
     // Input validation
     if (!email || !password) return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     if (!EMAIL_RE.test(email) || email.length > 254) return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+
+    const username = email.split('@')[0];
+    if (BLOCKED_USERNAMES.has(username)) return NextResponse.json({ error: 'This email address cannot be used to register' }, { status: 400 });
     if (password.length < 8) return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
     if (password.length > 128) return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     if (licenseKey && licenseKey.length > 64) return NextResponse.json({ error: 'Invalid license key' }, { status: 400 });
