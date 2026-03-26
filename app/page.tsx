@@ -93,8 +93,17 @@ const FEATURES = [
   },
 ];
 
+const COLORS = [
+  [99, 102, 241],   // indigo
+  [168, 85, 247],   // purple
+  [236, 72, 153],   // pink
+  [34, 211, 238],   // cyan
+  [52, 211, 153],   // emerald
+];
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef({ x: -9999, y: -9999 });
   const [open, setOpen] = useState(false);
   const [tooltip, setTooltip] = useState<{ label: string; desc: string } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -113,48 +122,89 @@ export default function Home() {
     resize();
     window.addEventListener("resize", resize);
 
-    type Particle = { x: number; y: number; vx: number; vy: number; radius: number };
-    const particles: Particle[] = Array.from({ length: 80 }, () => ({
+    const onMouseMove = (e: MouseEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", onMouseMove);
+
+    type Particle = {
+      x: number; y: number; vx: number; vy: number;
+      radius: number; color: number[];
+    };
+
+    const particles: Particle[] = Array.from({ length: 100 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
       vx: (Math.random() - 0.5) * 0.6,
       vy: (Math.random() - 0.5) * 0.6,
       radius: Math.random() * 2 + 1,
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
     }));
+
+    const CURSOR_RADIUS = 120;
+    const CONNECTION_DIST = 150;
 
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const mouse = mouseRef.current;
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
+
+        // Attract toward cursor
+        const dx = mouse.x - p.x;
+        const dy = mouse.y - p.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < CURSOR_RADIUS && dist > 0) {
+          const force = (CURSOR_RADIUS - dist) / CURSOR_RADIUS;
+          p.vx += (dx / dist) * force * 0.15;
+          p.vy += (dy / dist) * force * 0.15;
+        }
+
+        // Dampen velocity
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        const [r, g, b] = p.color;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(99,102,241,0.7)";
+        ctx.fillStyle = `rgba(${r},${g},${b},0.85)`;
         ctx.fill();
+
         for (let j = i + 1; j < particles.length; j++) {
           const q = particles[j];
-          const dx = p.x - q.x;
-          const dy = p.y - q.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 150) {
+          const cdx = p.x - q.x;
+          const cdy = p.y - q.y;
+          const cdist = Math.sqrt(cdx * cdx + cdy * cdy);
+          if (cdist < CONNECTION_DIST) {
+            const alpha = (1 - cdist / CONNECTION_DIST) * 0.45;
+            const [qr, qg, qb] = q.color;
+            const mr = Math.round((r + qr) / 2);
+            const mg = Math.round((g + qg) / 2);
+            const mb = Math.round((b + qb) / 2);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(99,102,241,${(1 - dist / 150) * 0.4})`;
+            ctx.strokeStyle = `rgba(${mr},${mg},${mb},${alpha})`;
             ctx.lineWidth = 0.8;
             ctx.stroke();
           }
         }
       }
+
       animationId = requestAnimationFrame(draw);
     };
     draw();
+
     return () => {
       cancelAnimationFrame(animationId);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
 
@@ -167,11 +217,24 @@ export default function Home() {
       className="relative flex flex-1 min-h-screen items-center justify-center overflow-hidden bg-[#050510]"
       onMouseMove={handleMouseMove}
     >
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.15)_0%,transparent_70%)] pointer-events-none" />
+      {/* Layer 1 — background image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="https://r2.fivemanage.com/6i9Nw4DbfIJjqzti98x40/Untitleddesign.png"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+        style={{ zIndex: 0 }}
+      />
+      {/* Layer 2 — blue dark overlay on top of image */}
+      <div className="absolute inset-0 bg-[#050510]/75 pointer-events-none" style={{ zIndex: 1 }} />
+
+      {/* Layer 3 — particle canvas on top of overlay */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }} />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12)_0%,transparent_70%)] pointer-events-none" style={{ zIndex: 2 }} />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center">
+      <div className="relative flex flex-col items-center gap-8 px-6 text-center" style={{ zIndex: 3 }}>
         <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-indigo-300">
           FiveM Anticheat
         </span>
