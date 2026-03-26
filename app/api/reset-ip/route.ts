@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { initDb, sql } from '@/lib/db';
+import { initDb, resetLicenseIp } from '@/lib/db';
 
 function requireAdmin(req: NextRequest): boolean {
   return req.headers.get('x-admin-secret') === process.env.ADMIN_SECRET;
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
-    await sql`UPDATE licenses SET ip = '', ip_locked = FALSE WHERE id = ${Number(id)}`;
+    await resetLicenseIp(Number(id));
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error('[reset-ip]', e);

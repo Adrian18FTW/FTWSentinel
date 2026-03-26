@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { initCustomers, createCustomer, getCustomerByEmail, getLicense, sql } from '@/lib/db';
+import { initCustomers, createCustomer, getCustomerByEmail, getLicense, isLicenseClaimed } from '@/lib/db';
 import { setSession } from '@/lib/session';
 
 const attempts = new Map<string, { count: number; until: number }>();
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid or inactive license key' }, { status: 400 });
       }
       // Check if another customer already owns this key
-      const claimed = await sql`SELECT id FROM customers WHERE license_key = ${licenseKey} LIMIT 1`;
-      if (claimed.length > 0) {
+      const claimed = await isLicenseClaimed(licenseKey);
+      if (claimed) {
         return NextResponse.json({ error: 'License key already linked to an account' }, { status: 409 });
       }
     }

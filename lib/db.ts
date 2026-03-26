@@ -183,3 +183,14 @@ export async function linkCustomerLicense(customerId: number, licenseKey: string
   await sql`UPDATE customers SET license_key = ${licenseKey} WHERE id = ${customerId}`;
 }
 
+export async function isLicenseClaimed(licenseKey: string): Promise<boolean> {
+  const rows = await sql`SELECT id FROM customers WHERE license_key = ${licenseKey} LIMIT 1`;
+  return rows.length > 0;
+}
+
+export async function resetLicenseIp(id: number) {
+  await sql`UPDATE licenses SET ip = '', ip_locked = FALSE WHERE id = ${id}`;
+}
+
+export { sql };
+
