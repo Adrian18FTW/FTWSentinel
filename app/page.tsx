@@ -266,8 +266,7 @@ function CheckoutModal({
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
-  const [open, setOpen] = useState(false);
-  const [plansOpen, setPlansOpen] = useState(false);
+  const [panel, setPanel] = useState<"features" | "plans" | null>(null);
   const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
     "1month": true,
     "3month": true,
@@ -430,117 +429,134 @@ export default function Home() {
           </a>
 
           <button
-            onClick={() => { setOpen((v) => !v); setPlansOpen(false); }}
+            onClick={() => setPanel((v) => (v === "features" ? null : "features"))}
             className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-indigo-300 backdrop-blur-sm transition-all duration-300 hover:bg-indigo-500/20 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95"
           >
-            <span className="inline-block transition-transform duration-300" style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}>
+            <span className="inline-block transition-transform duration-300" style={{ transform: panel === "features" ? "rotate(45deg)" : "rotate(0deg)" }}>
               ✦
             </span>
-            {open ? "Hide Features" : "View Features"}
+            {panel === "features" ? "Hide Features" : "View Features"}
           </button>
 
           <button
-            onClick={() => { setPlansOpen((v) => !v); setOpen(false); }}
+            onClick={() => setPanel((v) => (v === "plans" ? null : "plans"))}
             className="inline-flex items-center gap-2 rounded-full border border-purple-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-purple-300 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white hover:scale-105 active:scale-95"
           >
-            <span className="inline-block transition-transform duration-300" style={{ transform: plansOpen ? "rotate(45deg)" : "rotate(0deg)" }}>
+            <span className="inline-block transition-transform duration-300" style={{ transform: panel === "plans" ? "rotate(45deg)" : "rotate(0deg)" }}>
               ◈
             </span>
-            {plansOpen ? "Hide Plans" : "View Plans"}
+            {panel === "plans" ? "Hide Plans" : "View Plans"}
           </button>
         </div>
 
-        {/* Feature list panel */}
-        <div
-          className="w-full max-w-3xl overflow-hidden transition-all duration-500 ease-in-out"
-          style={{ maxHeight: open ? "2000px" : "0px", opacity: open ? 1 : 0 }}
-        >
-          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
-            {FEATURES.map((cat) => (
-              <div key={cat.category} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">{cat.icon}</span>
-                  <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${cat.color} bg-clip-text text-transparent`}>
-                    {cat.category}
-                  </span>
-                </div>
-                <ul className="flex flex-col gap-2">
-                  {cat.items.map((item) => (
-                    <li
-                      key={item.label}
-                      onMouseEnter={() => setTooltip(item)}
-                      onMouseLeave={() => setTooltip(null)}
-                      className="group flex items-start gap-2 cursor-default rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-white/10"
-                    >
-                      <span className={`mt-0.5 text-xs font-bold bg-gradient-to-r ${cat.color} bg-clip-text text-transparent shrink-0`}>
-                        [+]
-                      </span>
-                      <span className="text-xs text-zinc-300 group-hover:text-white transition-colors duration-150 leading-relaxed">
-                        {item.label}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Plans panel */}
-        <div
-          className="w-full max-w-3xl overflow-hidden transition-all duration-500 ease-in-out"
-          style={{ maxHeight: plansOpen ? "1000px" : "0px", opacity: plansOpen ? 1 : 0 }}
-        >
-          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3 text-left">
-            {PLANS.map((plan) => {
-              const available = planAvailability[plan.id] ?? true;
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative rounded-2xl border ${plan.border} bg-white/5 backdrop-blur-sm p-6 flex flex-col gap-4 shadow-xl ${plan.glow} ${plan.popular ? "ring-1 ring-purple-500/50" : ""}`}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-0.5 text-xs font-bold text-white">
-                      Popular
+        {/* Panel container — fixed height slot, panels fade in/out inside */}
+        <div className="relative w-full max-w-3xl" style={{ minHeight: panel ? undefined : 0 }}>
+          {/* Feature list panel */}
+          <div
+            className="transition-[opacity,transform] duration-300 ease-in-out"
+            style={{
+              opacity: panel === "features" ? 1 : 0,
+              transform: panel === "features" ? "translateY(0px)" : "translateY(-8px)",
+              pointerEvents: panel === "features" ? "auto" : "none",
+              position: panel === "plans" ? "absolute" : "relative",
+              inset: 0,
+              visibility: panel === "features" || panel === null ? "visible" : "hidden",
+            }}
+          >
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
+              {FEATURES.map((cat) => (
+                <div key={cat.category} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">{cat.icon}</span>
+                    <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${cat.color} bg-clip-text text-transparent`}>
+                      {cat.category}
                     </span>
-                  )}
-                  <div>
-                    <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
-                      {plan.label}
-                    </span>
-                    <div className="mt-2 flex items-end gap-1">
-                      <span className={`text-3xl font-extrabold bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
-                        {plan.price}
-                      </span>
-                      <span className="text-zinc-500 text-xs mb-1">/ mo</span>
-                    </div>
                   </div>
-                  <ul className="flex flex-col gap-2 flex-1">
-                    {plan.features.map((f) => (
-                      <li key={f.label} className="flex items-center gap-2 text-xs">
-                        {f.included ? (
-                          <span className="text-emerald-400 font-bold">✓</span>
-                        ) : (
-                          <span className="text-red-400 font-bold">✗</span>
-                        )}
-                        <span className={f.included ? "text-zinc-200" : "text-zinc-500"}>{f.label}</span>
+                  <ul className="flex flex-col gap-2">
+                    {cat.items.map((item) => (
+                      <li
+                        key={item.label}
+                        onMouseEnter={() => setTooltip(item)}
+                        onMouseLeave={() => setTooltip(null)}
+                        className="group flex items-start gap-2 cursor-default rounded-lg px-2 py-1.5 transition-colors duration-150 hover:bg-white/10"
+                      >
+                        <span className={`mt-0.5 text-xs font-bold bg-gradient-to-r ${cat.color} bg-clip-text text-transparent shrink-0`}>
+                          [+]
+                        </span>
+                        <span className="text-xs text-zinc-300 group-hover:text-white transition-colors duration-150 leading-relaxed">
+                          {item.label}
+                        </span>
                       </li>
                     ))}
                   </ul>
-                  <button
-                    onClick={() => available && setCheckoutPlan(plan)}
-                    disabled={!available}
-                    className={`mt-2 w-full text-center rounded-full py-2.5 text-xs font-semibold transition-all duration-200 ${
-                      available
-                        ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 hover:scale-105 active:scale-95 shadow-lg`
-                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                    }`}
-                  >
-                    {available ? "Purchase with Crypto" : "Unavailable"}
-                  </button>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+          {/* Plans panel */}
+          <div
+            className="transition-[opacity,transform] duration-300 ease-in-out"
+            style={{
+              opacity: panel === "plans" ? 1 : 0,
+              transform: panel === "plans" ? "translateY(0px)" : "translateY(-8px)",
+              pointerEvents: panel === "plans" ? "auto" : "none",
+              position: panel === "features" ? "absolute" : "relative",
+              inset: 0,
+              visibility: panel === "plans" || panel === null ? "visible" : "hidden",
+            }}
+          >
+            <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3 text-left">
+              {PLANS.map((plan) => {
+                const available = planAvailability[plan.id] ?? true;
+                return (
+                  <div
+                    key={plan.id}
+                    className={`relative rounded-2xl border ${plan.border} bg-white/5 backdrop-blur-sm p-6 flex flex-col gap-4 shadow-xl ${plan.glow} ${plan.popular ? "ring-1 ring-purple-500/50" : ""}`}
+                  >
+                    {plan.popular && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-0.5 text-xs font-bold text-white">
+                        Popular
+                      </span>
+                    )}
+                    <div>
+                      <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+                        {plan.label}
+                      </span>
+                      <div className="mt-2 flex items-end gap-1">
+                        <span className={`text-3xl font-extrabold bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+                          {plan.price}
+                        </span>
+                        <span className="text-zinc-500 text-xs mb-1">/ mo</span>
+                      </div>
+                    </div>
+                    <ul className="flex flex-col gap-2 flex-1">
+                      {plan.features.map((f) => (
+                        <li key={f.label} className="flex items-center gap-2 text-xs">
+                          {f.included ? (
+                            <span className="text-emerald-400 font-bold">✓</span>
+                          ) : (
+                            <span className="text-red-400 font-bold">✗</span>
+                          )}
+                          <span className={f.included ? "text-zinc-200" : "text-zinc-500"}>{f.label}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      onClick={() => available && setCheckoutPlan(plan)}
+                      disabled={!available}
+                      className={`mt-2 w-full text-center rounded-full py-2.5 text-xs font-semibold transition-all duration-200 ${
+                        available
+                          ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 hover:scale-105 active:scale-95 shadow-lg`
+                          : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                      }`}
+                    >
+                      {available ? "Purchase with Crypto" : "Unavailable"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
