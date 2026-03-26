@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
+import { Resend } from 'resend';
 import {
   initDb,
   initCryptoOrders,
@@ -8,7 +9,6 @@ import {
   updateCryptoOrderStatus,
   createLicense,
 } from '@/lib/db';
-import { randomBytes } from 'crypto';
 
 function verifySignature(body: string, sig: string, secret: string): boolean {
   const expected = createHmac('sha512', secret).update(body).digest('hex');
@@ -61,7 +61,35 @@ export async function POST(req: NextRequest) {
       await createLicense(key, order.plan, note);
       await completeCryptoOrder(String(payment_id), key);
 
-      // Optionally send the key via Discord webhook or email here
+      // Send license key to customer via email
+      if (order.email) {
+        try {
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const planLabel = order.plan === '3month' ? '3 Months' : order.plan === '6month' ? '6 Months' : '1 Month';
+          await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL ?? 'FTWSentinel <noreply@yourdomain.com>',
+            to: order.email,
+            subject: 'Your FTWSentinel License Key',
+            html: `
+              <div style="background:#0d0d1f;color:#fff;font-family:monospace;padding:32px;border-radius:12px;max-width:480px;margin:0 auto">
+                <h1 style="font-size:22px;margin-bottom:4px">FTW<span style="background:linear-gradient(to right,#818cf8,#c084fc,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Sentinel</span></h1>
+                <p style="color:#a1a1aa;font-size:13px;margin-top:0">Your license is ready</p>
+                <hr style="border:none;border-top:1px solid #27272a;margin:20px 0"/>
+                <p style="color:#a1a1aa;font-size:12px;margin-bottom:8px">Plan: <span style="color:#fff">${planLabel}</span></p>
+                <p style="color:#a1a1aa;font-size:12px;margin-bottom:16px">License Key:</p>
+                <div style="background:#18181b;border:1px solid #3f3f46;border-radius:8px;padding:14px 18px;font-size:15px;letter-spacing:1px;color:#a5b4fc;word-break:break-all">
+                  ${key}
+                </div>
+                <p style="color:#52525b;font-size:11px;margin-top:24px">Keep this key safe. Need help? Join our <a href="https://discord.gg/Prr7FuvBJc" style="color:#818cf8">Discord</a>.</p>
+              </div>
+            `,
+          });
+          console.log(`[crypto/webhook] Email sent to ${order.email} for order ${payment_id}`);
+        } catch (emailErr) {
+          console.error('[crypto/webhook] Failed to send email:', emailErr);
+        }
+      }
+
       console.log(`[crypto/webhook] License issued: ${key} for order ${payment_id}`);
     } else {
       await updateCryptoOrderStatus(String(payment_id), payment_status);

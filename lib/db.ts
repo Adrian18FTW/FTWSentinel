@@ -148,4 +148,38 @@ export async function updateCryptoOrderStatus(paymentId: string, status: string)
   `;
 }
 
-export { sql };
+export async function initCustomers() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS customers (
+      id           SERIAL PRIMARY KEY,
+      email        VARCHAR(255) NOT NULL UNIQUE,
+      password     VARCHAR(255) NOT NULL,
+      license_key  VARCHAR(64),
+      created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
+export async function createCustomer(email: string, password: string, licenseKey?: string) {
+  const rows = await sql`
+    INSERT INTO customers (email, password, license_key)
+    VALUES (${email}, ${password}, ${licenseKey ?? null})
+    RETURNING id, email, license_key, created_at
+  `;
+  return rows[0];
+}
+
+export async function getCustomerByEmail(email: string) {
+  const rows = await sql`SELECT * FROM customers WHERE email = ${email} LIMIT 1`;
+  return rows[0] ?? null;
+}
+
+export async function getCustomerById(id: number) {
+  const rows = await sql`SELECT id, email, license_key, created_at FROM customers WHERE id = ${id} LIMIT 1`;
+  return rows[0] ?? null;
+}
+
+export async function linkCustomerLicense(customerId: number, licenseKey: string) {
+  await sql`UPDATE customers SET license_key = ${licenseKey} WHERE id = ${customerId}`;
+}
+
