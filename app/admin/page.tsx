@@ -68,6 +68,8 @@ export default function AdminPage() {
     fetchCustomers(secret);
     fetchLicenses(secret);
   };
+
+  const fetchPlans = useCallback(async () => {
     const res = await fetch('/api/plans');
     if (res.ok) setPlanAvailability(await res.json());
   }, []);

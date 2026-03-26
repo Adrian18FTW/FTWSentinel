@@ -193,6 +193,8 @@ export async function setCustomerSuspended(id: number, suspended: boolean) {
 export async function deleteCustomer(id: number) {
   await sql`DELETE FROM customers WHERE id = ${id}`;
 }
+
+export async function linkCustomerLicense(customerId: number, licenseKey: string) {
   await sql`UPDATE customers SET license_key = ${licenseKey} WHERE id = ${customerId}`;
 }
 
