@@ -22,7 +22,8 @@ export async function PATCH(req: NextRequest) {
   if (action === 'suspend') {
     // Suspend account and revoke their license if they have one
     const customers = await getAllCustomers();
-    const customer = customers.find((c: { id: number }) => c.id === id) as { id: number; license_key: string | null } | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const customer = customers.find((c: any) => c.id === id) as { id: number; license_key: string | null } | undefined;
     if (customer?.license_key) {
       const license = await getLicense(customer.license_key);
       if (license) await revokeLicense(license.id);
