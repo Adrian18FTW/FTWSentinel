@@ -1,11 +1,12 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 
-const SECRET = process.env.SESSION_SECRET;
-if (!SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('SESSION_SECRET env var is required in production');
-}
-const KEY = SECRET ?? 'dev-only-secret-do-not-use-in-prod';
+const KEY = process.env.SESSION_SECRET ?? (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET env var is required in production');
+  }
+  return 'dev-only-secret-do-not-use-in-prod';
+})();
 const COOKIE = 'ftw_session';
 const MAX_AGE_DEFAULT = 60 * 60 * 24 * 7;      // 7 days
 const MAX_AGE_REMEMBER = 60 * 60 * 24 * 30;    // 30 days
