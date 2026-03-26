@@ -15,6 +15,14 @@ interface License {
   last_seen: string | null;
 }
 
+interface Customer {
+  id: number;
+  email: string;
+  license_key: string | null;
+  suspended: boolean;
+  created_at: string;
+}
+
 const PLAN_LABELS: Record<string, string> = {
   '1month': '1 Month',
   '3month': '3 Months',
@@ -24,8 +32,9 @@ const PLAN_LABELS: Record<string, string> = {
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<'licenses' | 'plans'>('licenses');
+  const [tab, setTab] = useState<'licenses' | 'plans' | 'customers'>('licenses');
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
     '1month': true, '3month': true, '6month': true,
   });
@@ -45,7 +54,20 @@ export default function AdminPage() {
     setError('');
   }, []);
 
-  const fetchPlans = useCallback(async () => {
+  const fetchCustomers = useCallback(async (s: string) => {
+    const res = await fetch('/api/admin/customers', { headers: { 'x-admin-secret': s } });
+    if (res.ok) setCustomers(await res.json());
+  }, []);
+
+  const customerAction = async (id: number, action: 'suspend' | 'unsuspend' | 'delete') => {
+    await fetch('/api/admin/customers', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+      body: JSON.stringify({ id, action }),
+    });
+    fetchCustomers(secret);
+    fetchLicenses(secret);
+  };
     const res = await fetch('/api/plans');
     if (res.ok) setPlanAvailability(await res.json());
   }, []);
@@ -60,8 +82,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (authed) { fetchLicenses(secret); fetchPlans(); }
-  }, [authed, fetchLicenses, fetchPlans, secret]);
+    if (authed) { fetchLicenses(secret); fetchPlans(); fetchCustomers(secret); }
+  }, [authed, fetchLicenses, fetchPlans, fetchCustomers, secret]);
 
   async function issue() {
     setLoading(true);
@@ -146,7 +168,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
-              {(['licenses', 'plans'] as const).map(t => (
+              {(['licenses', 'plans', 'customers'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -154,7 +176,7 @@ export default function AdminPage() {
                     tab === t ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                   }`}
                 >
-                  {t === 'licenses' ? 'Licenses' : 'Plans'}
+                  {t === 'licenses' ? 'Licenses' : t === 'plans' ? 'Plans' : 'Customers'}
                 </button>
               ))}
             </div>
@@ -162,7 +184,54 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {tab === 'plans' ? (
+        {tab === 'customers' ? (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-gray-800">
+              <h2 className="text-lg font-semibold">Customers</h2>
+              <p className="text-gray-400 text-xs mt-0.5">Registered customer accounts. Suspending also revokes their linked license.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-400 text-xs uppercase border-b border-gray-800">
+                    <th className="text-left px-4 py-3">Email</th>
+                    <th className="text-left px-4 py-3">License Key</th>
+                    <th className="text-left px-4 py-3">Registered</th>
+                    <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.map(c => (
+                    <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                      <td className="px-4 py-3 text-white text-xs">{c.email}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-blue-300">{c.license_key ?? <span className="text-gray-500">—</span>}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.suspended ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
+                          {c.suspended ? 'suspended' : 'active'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          {c.suspended ? (
+                            <button onClick={() => customerAction(c.id, 'unsuspend')} className="text-green-400 hover:text-green-300 text-xs">Unsuspend</button>
+                          ) : (
+                            <button onClick={() => { if (confirm('Suspend this account and revoke their license?')) customerAction(c.id, 'suspend'); }} className="text-yellow-400 hover:text-yellow-300 text-xs">Suspend</button>
+                          )}
+                          <button onClick={() => { if (confirm('Delete this account permanently?')) customerAction(c.id, 'delete'); }} className="text-red-400 hover:text-red-300 text-xs">Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {customers.length === 0 && (
+                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : tab === 'plans' ? (
           /* Plans availability tab */
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-1">Plan Availability</h2>

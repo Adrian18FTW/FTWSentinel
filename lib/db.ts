@@ -155,9 +155,12 @@ export async function initCustomers() {
       email        VARCHAR(255) NOT NULL UNIQUE,
       password     VARCHAR(255) NOT NULL,
       license_key  VARCHAR(64),
+      suspended    BOOLEAN      NOT NULL DEFAULT FALSE,
       created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
     )
   `;
+  // Add suspended column if upgrading from older schema
+  await sql`ALTER TABLE customers ADD COLUMN IF NOT EXISTS suspended BOOLEAN NOT NULL DEFAULT FALSE`;
 }
 
 export async function createCustomer(email: string, password: string, licenseKey?: string) {
@@ -179,7 +182,17 @@ export async function getCustomerById(id: number) {
   return rows[0] ?? null;
 }
 
-export async function linkCustomerLicense(customerId: number, licenseKey: string) {
+export async function getAllCustomers() {
+  return sql`SELECT id, email, license_key, suspended, created_at FROM customers ORDER BY created_at DESC`;
+}
+
+export async function setCustomerSuspended(id: number, suspended: boolean) {
+  await sql`UPDATE customers SET suspended = ${suspended} WHERE id = ${id}`;
+}
+
+export async function deleteCustomer(id: number) {
+  await sql`DELETE FROM customers WHERE id = ${id}`;
+}
   await sql`UPDATE customers SET license_key = ${licenseKey} WHERE id = ${customerId}`;
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { initCustomers, createCustomer, getCustomerByEmail, getLicense, isLicenseClaimed } from '@/lib/db';
 import { setSession } from '@/lib/session';
+import { sanitizeEmail, sanitizeString } from '@/lib/sanitize';
 
 const attempts = new Map<string, { count: number; until: number }>();
 const MAX_ATTEMPTS = 5;
@@ -32,9 +33,9 @@ const BLOCKED_USERNAMES = new Set([
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { email?: unknown; password?: unknown; licenseKey?: unknown };
-    const email = typeof body.email === 'string' ? body.email.toLowerCase().trim() : '';
-    const password = typeof body.password === 'string' ? body.password : '';
-    const licenseKey = typeof body.licenseKey === 'string' ? body.licenseKey.trim() : '';
+    const email = sanitizeEmail(body.email);
+    const password = typeof body.password === 'string' ? body.password.slice(0, 128) : '';
+    const licenseKey = sanitizeString(body.licenseKey, 64);
 
     // Input validation
     if (!email || !password) return NextResponse.json({ error: 'Email and password required' }, { status: 400 });

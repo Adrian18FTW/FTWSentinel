@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { initCustomers, getCustomerByEmail } from '@/lib/db';
 import { setSession } from '@/lib/session';
+import { sanitizeEmail } from '@/lib/sanitize';
 
 // In-memory brute force map — resets on cold start, good enough for serverless
 const attempts = new Map<string, { count: number; until: number }>();
@@ -30,8 +31,8 @@ const DUMMY_HASH = '$2a$12$dummy.hash.to.prevent.timing.attacks.padding.here.xx'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { email?: unknown; password?: unknown; rememberMe?: unknown };
-    const email = typeof body.email === 'string' ? body.email.toLowerCase().trim() : '';
-    const password = typeof body.password === 'string' ? body.password : '';
+    const email = sanitizeEmail(body.email);
+    const password = typeof body.password === 'string' ? body.password.slice(0, 128) : '';
     const rememberMe = body.rememberMe === true;
 
     if (!email || !password) return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
@@ -52,6 +53,10 @@ export async function POST(req: NextRequest) {
 
     if (!customer || !valid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
+    }
+
+    if (customer.suspended) {
+      return NextResponse.json({ error: 'This account has been suspended. Contact support on Discord.' }, { status: 403 });
     }
 
     clearAttempts(rateLimitKey);
