@@ -6,7 +6,8 @@ const PLANS = [
   {
     id: "1month",
     label: "1 Month",
-    price: null,
+    price: "€29.99",
+    priceLabel: "per month",
     gradient: "from-indigo-500 to-blue-500",
     border: "border-indigo-500/30",
     glow: "shadow-indigo-500/20",
@@ -20,7 +21,8 @@ const PLANS = [
   {
     id: "3month",
     label: "3 Months",
-    price: null,
+    price: "€39.99",
+    priceLabel: "per month",
     gradient: "from-purple-500 to-pink-500",
     border: "border-purple-500/30",
     glow: "shadow-purple-500/20",
@@ -35,7 +37,8 @@ const PLANS = [
   {
     id: "6month",
     label: "6 Months",
-    price: null,
+    price: "€79.99",
+    priceLabel: "per month",
     gradient: "from-emerald-500 to-cyan-500",
     border: "border-emerald-500/30",
     glow: "shadow-emerald-500/20",
@@ -412,6 +415,12 @@ export default function Home() {
                     <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
                       {plan.label}
                     </span>
+                    <div className="mt-2 flex items-end gap-1">
+                      <span className={`text-3xl font-extrabold bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+                        {plan.price}
+                      </span>
+                      <span className="text-zinc-500 text-xs mb-1">/ mo</span>
+                    </div>
                   </div>
                   <ul className="flex flex-col gap-2 flex-1">
                     {plan.features.map((f) => (
