@@ -449,20 +449,9 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Panel container — fixed height slot, panels fade in/out inside */}
-        <div className="relative w-full max-w-3xl" style={{ minHeight: panel ? undefined : 0 }}>
-          {/* Feature list panel */}
-          <div
-            className="transition-[opacity,transform] duration-300 ease-in-out"
-            style={{
-              opacity: panel === "features" ? 1 : 0,
-              transform: panel === "features" ? "translateY(0px)" : "translateY(-8px)",
-              pointerEvents: panel === "features" ? "auto" : "none",
-              position: panel === "plans" ? "absolute" : "relative",
-              inset: 0,
-              visibility: panel === "features" || panel === null ? "visible" : "hidden",
-            }}
-          >
+        {/* Panel container */}
+        {panel === "features" && (
+          <div key="features" className="w-full max-w-3xl animate-fadeSlideIn">
             <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
               {FEATURES.map((cat) => (
                 <div key={cat.category} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
@@ -493,19 +482,10 @@ export default function Home() {
               ))}
             </div>
           </div>
+        )}
 
-          {/* Plans panel */}
-          <div
-            className="transition-[opacity,transform] duration-300 ease-in-out"
-            style={{
-              opacity: panel === "plans" ? 1 : 0,
-              transform: panel === "plans" ? "translateY(0px)" : "translateY(-8px)",
-              pointerEvents: panel === "plans" ? "auto" : "none",
-              position: panel === "features" ? "absolute" : "relative",
-              inset: 0,
-              visibility: panel === "plans" || panel === null ? "visible" : "hidden",
-            }}
-          >
+        {panel === "plans" && (
+          <div key="plans" className="w-full max-w-3xl animate-fadeSlideIn">
             <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3 text-left">
               {PLANS.map((plan) => {
                 const available = planAvailability[plan.id] ?? true;
@@ -558,7 +538,7 @@ export default function Home() {
               })}
             </div>
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-3 text-zinc-700 text-xs">
           <span className="h-px w-16 bg-zinc-700" />
