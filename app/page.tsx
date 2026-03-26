@@ -160,6 +160,11 @@ export default function Home() {
   const [tooltip, setTooltip] = useState<{ label: string; desc: string } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [checkoutPlan, setCheckoutPlan] = useState<(typeof PLANS)[0] | null>(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/customer/me').then(r => { if (r.ok) setLoggedIn(true); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/plans").then((r) => r.json()).then(setPlanAvailability).catch(() => {});
@@ -226,8 +231,14 @@ export default function Home() {
 
       {/* Top-right nav */}
       <div className="absolute top-4 right-4 flex items-center gap-2" style={{ zIndex: 10 }}>
-        <a href="/customer/login" className="text-zinc-400 hover:text-white text-xs border border-white/10 bg-white/5 rounded-full px-3 py-1.5 transition hover:border-white/30 backdrop-blur-sm">Sign in</a>
-        <a href="/customer/register" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Sign up</a>
+        {loggedIn ? (
+          <a href="/customer" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Account</a>
+        ) : (
+          <>
+            <a href="/customer/login" className="text-zinc-400 hover:text-white text-xs border border-white/10 bg-white/5 rounded-full px-3 py-1.5 transition hover:border-white/30 backdrop-blur-sm">Sign in</a>
+            <a href="/customer/register" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Sign up</a>
+          </>
+        )}
       </div>
 
       <div className="relative flex flex-col items-center gap-8 px-6 text-center" style={{ zIndex: 3 }}>
