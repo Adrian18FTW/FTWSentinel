@@ -143,12 +143,125 @@ const FEATURES = [
 ];
 
 const COLORS = [
-  [99, 102, 241],   // indigo
-  [168, 85, 247],   // purple
-  [236, 72, 153],   // pink
-  [34, 211, 238],   // cyan
-  [52, 211, 153],   // emerald
+  [99, 102, 241],
+  [168, 85, 247],
+  [236, 72, 153],
+  [34, 211, 238],
+  [52, 211, 153],
 ];
+
+// ── Crypto Checkout Modal ──────────────────────────────────────────────────────
+function CheckoutModal({
+  plan,
+  onClose,
+}: {
+  plan: (typeof PLANS)[0];
+  onClose: () => void;
+}) {
+  const [currency, setCurrency] = useState<"btc" | "eth">("eth");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handlePay() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/crypto/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: plan.id, currency, email }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0d0d1f] p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-white font-bold text-lg">Checkout</h2>
+            <p className={`text-xs font-semibold bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+              {plan.label} — {plan.price}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-zinc-500 hover:text-white text-xl leading-none"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Currency selector */}
+        <p className="text-zinc-400 text-xs mb-2">Pay with</p>
+        <div className="flex gap-3 mb-5">
+          {(["eth", "btc"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCurrency(c)}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition ${
+                currency === c
+                  ? "border-indigo-500 bg-indigo-500/20 text-white"
+                  : "border-white/10 bg-white/5 text-zinc-400 hover:border-white/20 hover:text-white"
+              }`}
+            >
+              {c === "eth" ? (
+                <>
+                  <span className="text-base">Ξ</span> Ethereum
+                </>
+              ) : (
+                <>
+                  <span className="text-base">₿</span> Bitcoin
+                </>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Optional email */}
+        <p className="text-zinc-400 text-xs mb-2">
+          Email <span className="text-zinc-600">(optional — for key delivery)</span>
+        </p>
+        <input
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2.5 mb-5 focus:outline-none focus:border-indigo-500 placeholder:text-zinc-600"
+        />
+
+        {error && <p className="text-red-400 text-xs mb-4">{error}</p>}
+
+        <button
+          onClick={handlePay}
+          disabled={loading}
+          className={`w-full rounded-full py-3 text-sm font-semibold text-white transition bg-gradient-to-r ${plan.gradient} hover:opacity-90 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {loading ? "Redirecting…" : `Pay with ${currency === "eth" ? "Ethereum" : "Bitcoin"}`}
+        </button>
+
+        <p className="text-zinc-600 text-xs text-center mt-4">
+          Powered by NOWPayments · Secure crypto checkout
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -156,13 +269,19 @@ export default function Home() {
   const [open, setOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
-    '1month': true, '3month': true, '6month': true,
+    "1month": true,
+    "3month": true,
+    "6month": true,
   });
   const [tooltip, setTooltip] = useState<{ label: string; desc: string } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [checkoutPlan, setCheckoutPlan] = useState<(typeof PLANS)[0] | null>(null);
 
   useEffect(() => {
-    fetch('/api/plans').then(r => r.json()).then(setPlanAvailability).catch(() => {});
+    fetch("/api/plans")
+      .then((r) => r.json())
+      .then(setPlanAvailability)
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -207,8 +326,6 @@ export default function Home() {
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-
-        // Attract toward cursor
         const dx = mouse.x - p.x;
         const dy = mouse.y - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -217,11 +334,8 @@ export default function Home() {
           p.vx += (dx / dist) * force * 0.15;
           p.vy += (dy / dist) * force * 0.15;
         }
-
-        // Dampen velocity
         p.vx *= 0.98;
         p.vy *= 0.98;
-
         p.x += p.vx;
         p.y += p.vy;
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
@@ -253,7 +367,6 @@ export default function Home() {
           }
         }
       }
-
       animationId = requestAnimationFrame(draw);
     };
     draw();
@@ -274,7 +387,6 @@ export default function Home() {
       className="relative flex flex-1 min-h-screen items-center justify-center overflow-hidden bg-[#050510]"
       onMouseMove={handleMouseMove}
     >
-      {/* Layer 1 — background image */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="https://r2.fivemanage.com/6i9Nw4DbfIJjqzti98x40/Untitleddesign.png"
@@ -283,14 +395,10 @@ export default function Home() {
         className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
         style={{ zIndex: 0 }}
       />
-      {/* Layer 2 — blue dark overlay on top of image */}
       <div className="absolute inset-0 bg-[#050510]/75 pointer-events-none" style={{ zIndex: 1 }} />
-
-      {/* Layer 3 — particle canvas on top of overlay */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12)_0%,transparent_70%)] pointer-events-none" style={{ zIndex: 2 }} />
 
-      {/* Main content */}
       <div className="relative flex flex-col items-center gap-8 px-6 text-center" style={{ zIndex: 3 }}>
         <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-widest text-indigo-300">
           FiveM Anticheat
@@ -309,7 +417,6 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          {/* Discord button */}
           <a
             href="https://discord.gg/Prr7FuvBJc"
             target="_blank"
@@ -322,29 +429,21 @@ export default function Home() {
             Join our Discord
           </a>
 
-          {/* Features button */}
           <button
             onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-indigo-300 backdrop-blur-sm transition-all duration-300 hover:bg-indigo-500/20 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95"
           >
-            <span
-              className="inline-block transition-transform duration-300"
-              style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}
-            >
+            <span className="inline-block transition-transform duration-300" style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}>
               ✦
             </span>
             {open ? "Hide Features" : "View Features"}
           </button>
 
-          {/* Plans button */}
           <button
             onClick={() => setPlansOpen((v) => !v)}
             className="inline-flex items-center gap-2 rounded-full border border-purple-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-purple-300 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white hover:scale-105 active:scale-95"
           >
-            <span
-              className="inline-block transition-transform duration-300"
-              style={{ transform: plansOpen ? "rotate(45deg)" : "rotate(0deg)" }}
-            >
+            <span className="inline-block transition-transform duration-300" style={{ transform: plansOpen ? "rotate(45deg)" : "rotate(0deg)" }}>
               ◈
             </span>
             {plansOpen ? "Hide Plans" : "View Plans"}
@@ -354,17 +453,11 @@ export default function Home() {
         {/* Feature list panel */}
         <div
           className="w-full max-w-3xl overflow-hidden transition-all duration-500 ease-in-out"
-          style={{
-            maxHeight: open ? "2000px" : "0px",
-            opacity: open ? 1 : 0,
-          }}
+          style={{ maxHeight: open ? "2000px" : "0px", opacity: open ? 1 : 0 }}
         >
           <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 text-left">
             {FEATURES.map((cat) => (
-              <div
-                key={cat.category}
-                className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"
-              >
+              <div key={cat.category} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">{cat.icon}</span>
                   <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${cat.color} bg-clip-text text-transparent`}>
@@ -430,25 +523,21 @@ export default function Home() {
                         ) : (
                           <span className="text-red-400 font-bold">✗</span>
                         )}
-                        <span className={f.included ? "text-zinc-200" : "text-zinc-500"}>
-                          {f.label}
-                        </span>
+                        <span className={f.included ? "text-zinc-200" : "text-zinc-500"}>{f.label}</span>
                       </li>
                     ))}
                   </ul>
-                  <a
-                    href="https://discord.gg/Prr7FuvBJc"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-disabled={!available}
+                  <button
+                    onClick={() => available && setCheckoutPlan(plan)}
+                    disabled={!available}
                     className={`mt-2 w-full text-center rounded-full py-2.5 text-xs font-semibold transition-all duration-200 ${
                       available
                         ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 hover:scale-105 active:scale-95 shadow-lg`
-                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed pointer-events-none"
+                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                     }`}
                   >
-                    {available ? "Purchase" : "Unavailable"}
-                  </a>
+                    {available ? "Purchase with Crypto" : "Unavailable"}
+                  </button>
                 </div>
               );
             })}
@@ -469,15 +558,17 @@ export default function Home() {
           style={{
             left: tooltipPos.x + 16,
             top: tooltipPos.y + 16,
-            transform:
-              tooltipPos.x > window.innerWidth - 280
-                ? "translateX(-110%)"
-                : undefined,
+            transform: tooltipPos.x > window.innerWidth - 280 ? "translateX(-110%)" : undefined,
           }}
         >
           <p className="font-semibold text-white mb-1">{tooltip.label}</p>
           <p>{tooltip.desc}</p>
         </div>
+      )}
+
+      {/* Crypto checkout modal */}
+      {checkoutPlan && (
+        <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />
       )}
     </div>
   );

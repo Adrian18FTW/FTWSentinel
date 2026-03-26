@@ -63,4 +63,56 @@ export async function deleteLicense(id: number) {
   await sql`DELETE FROM licenses WHERE id = ${id}`;
 }
 
+export async function initCryptoOrders() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS crypto_orders (
+      id            SERIAL PRIMARY KEY,
+      payment_id    VARCHAR(128) NOT NULL UNIQUE,
+      plan          VARCHAR(16)  NOT NULL,
+      email         TEXT         NOT NULL DEFAULT '',
+      amount_usd    NUMERIC(10,2) NOT NULL,
+      currency      VARCHAR(16)  NOT NULL,
+      status        VARCHAR(32)  NOT NULL DEFAULT 'waiting',
+      license_key   VARCHAR(64),
+      created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+}
+
+export async function createCryptoOrder(
+  paymentId: string,
+  plan: string,
+  email: string,
+  amountUsd: number,
+  currency: string
+) {
+  const rows = await sql`
+    INSERT INTO crypto_orders (payment_id, plan, email, amount_usd, currency)
+    VALUES (${paymentId}, ${plan}, ${email}, ${amountUsd}, ${currency})
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function getCryptoOrder(paymentId: string) {
+  const rows = await sql`SELECT * FROM crypto_orders WHERE payment_id = ${paymentId} LIMIT 1`;
+  return rows[0] ?? null;
+}
+
+export async function completeCryptoOrder(paymentId: string, licenseKey: string) {
+  await sql`
+    UPDATE crypto_orders
+    SET status = 'finished', license_key = ${licenseKey}, updated_at = NOW()
+    WHERE payment_id = ${paymentId}
+  `;
+}
+
+export async function updateCryptoOrderStatus(paymentId: string, status: string) {
+  await sql`
+    UPDATE crypto_orders SET status = ${status}, updated_at = NOW()
+    WHERE payment_id = ${paymentId}
+  `;
+}
+
 export { sql };
