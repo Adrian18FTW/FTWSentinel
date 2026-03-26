@@ -403,12 +403,20 @@ export default function Home() {
           FiveM Anticheat
         </span>
 
-        <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-7xl">
-          FTW
-          <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Sentinel
-          </span>
-        </h1>
+        <div className="flex items-center justify-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://r2.fivemanage.com/6i9Nw4DbfIJjqzti98x40/NewProject(1).png"
+            alt="FTWSentinel logo"
+            className="h-14 w-14 sm:h-20 sm:w-20 object-contain drop-shadow-lg"
+          />
+          <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-7xl">
+            FTW
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Sentinel
+            </span>
+          </h1>
+        </div>
 
         <p className="max-w-md text-base text-zinc-400 leading-relaxed">
           Advanced anticheat protection for your FiveM server. Detect, prevent,
