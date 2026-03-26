@@ -2,6 +2,52 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const PLANS = [
+  {
+    id: "1month",
+    label: "1 Month",
+    price: null,
+    gradient: "from-indigo-500 to-blue-500",
+    border: "border-indigo-500/30",
+    glow: "shadow-indigo-500/20",
+    features: [
+      { label: "Base Product", included: true },
+      { label: "24/7 Support", included: true },
+      { label: "Web Panel", included: false },
+      { label: "Dev Testing", included: false },
+    ],
+  },
+  {
+    id: "3month",
+    label: "3 Months",
+    price: null,
+    gradient: "from-purple-500 to-pink-500",
+    border: "border-purple-500/30",
+    glow: "shadow-purple-500/20",
+    popular: true,
+    features: [
+      { label: "Base Product", included: true },
+      { label: "24/7 Support", included: true },
+      { label: "Web Panel", included: true },
+      { label: "Dev Testing", included: false },
+    ],
+  },
+  {
+    id: "6month",
+    label: "6 Months",
+    price: null,
+    gradient: "from-emerald-500 to-cyan-500",
+    border: "border-emerald-500/30",
+    glow: "shadow-emerald-500/20",
+    features: [
+      { label: "Base Product", included: true },
+      { label: "24/7 Support", included: true },
+      { label: "Web Panel", included: true },
+      { label: "Dev Testing", included: true },
+    ],
+  },
+];
+
 const FEATURES = [
   {
     category: "Combat Protection",
@@ -105,8 +151,16 @@ export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
   const [open, setOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
+    '1month': true, '3month': true, '6month': true,
+  });
   const [tooltip, setTooltip] = useState<{ label: string; desc: string } | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    fetch('/api/plans').then(r => r.json()).then(setPlanAvailability).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -278,6 +332,20 @@ export default function Home() {
             </span>
             {open ? "Hide Features" : "View Features"}
           </button>
+
+          {/* Plans button */}
+          <button
+            onClick={() => setPlansOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border border-purple-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-purple-300 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white hover:scale-105 active:scale-95"
+          >
+            <span
+              className="inline-block transition-transform duration-300"
+              style={{ transform: plansOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+            >
+              ◈
+            </span>
+            {plansOpen ? "Hide Plans" : "View Plans"}
+          </button>
         </div>
 
         {/* Feature list panel */}
@@ -319,6 +387,62 @@ export default function Home() {
                 </ul>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Plans panel */}
+        <div
+          className="w-full max-w-3xl overflow-hidden transition-all duration-500 ease-in-out"
+          style={{ maxHeight: plansOpen ? "1000px" : "0px", opacity: plansOpen ? 1 : 0 }}
+        >
+          <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-3 text-left">
+            {PLANS.map((plan) => {
+              const available = planAvailability[plan.id] ?? true;
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative rounded-2xl border ${plan.border} bg-white/5 backdrop-blur-sm p-6 flex flex-col gap-4 shadow-xl ${plan.glow} ${plan.popular ? "ring-1 ring-purple-500/50" : ""}`}
+                >
+                  {plan.popular && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-0.5 text-xs font-bold text-white">
+                      Popular
+                    </span>
+                  )}
+                  <div>
+                    <span className={`text-xs font-bold uppercase tracking-widest bg-gradient-to-r ${plan.gradient} bg-clip-text text-transparent`}>
+                      {plan.label}
+                    </span>
+                  </div>
+                  <ul className="flex flex-col gap-2 flex-1">
+                    {plan.features.map((f) => (
+                      <li key={f.label} className="flex items-center gap-2 text-xs">
+                        {f.included ? (
+                          <span className="text-emerald-400 font-bold">✓</span>
+                        ) : (
+                          <span className="text-red-400 font-bold">✗</span>
+                        )}
+                        <span className={f.included ? "text-zinc-200" : "text-zinc-500"}>
+                          {f.label}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href="https://discord.gg/Prr7FuvBJc"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-disabled={!available}
+                    className={`mt-2 w-full text-center rounded-full py-2.5 text-xs font-semibold transition-all duration-200 ${
+                      available
+                        ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 hover:scale-105 active:scale-95 shadow-lg`
+                        : "bg-zinc-800 text-zinc-500 cursor-not-allowed pointer-events-none"
+                    }`}
+                  >
+                    {available ? "Purchase" : "Unavailable"}
+                  </a>
+                </div>
+              );
+            })}
           </div>
         </div>
 

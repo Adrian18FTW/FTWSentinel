@@ -15,10 +15,20 @@ interface License {
   last_seen: string | null;
 }
 
+const PLAN_LABELS: Record<string, string> = {
+  '1month': '1 Month',
+  '3month': '3 Months',
+  '6month': '6 Months',
+};
+
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
+  const [tab, setTab] = useState<'licenses' | 'plans'>('licenses');
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
+    '1month': true, '3month': true, '6month': true,
+  });
   const [error, setError] = useState('');
   const [newPlan, setNewPlan] = useState('1month');
   const [newNote, setNewNote] = useState('');
@@ -35,9 +45,23 @@ export default function AdminPage() {
     setError('');
   }, []);
 
+  const fetchPlans = useCallback(async () => {
+    const res = await fetch('/api/plans');
+    if (res.ok) setPlanAvailability(await res.json());
+  }, []);
+
+  const togglePlan = async (plan: string, available: boolean) => {
+    const res = await fetch('/api/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+      body: JSON.stringify({ plan, available }),
+    });
+    if (res.ok) setPlanAvailability(await res.json());
+  };
+
   useEffect(() => {
-    if (authed) fetchLicenses(secret);
-  }, [authed, fetchLicenses, secret]);
+    if (authed) { fetchLicenses(secret); fetchPlans(); }
+  }, [authed, fetchLicenses, fetchPlans, secret]);
 
   async function issue() {
     setLoading(true);
@@ -120,9 +144,60 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold">FTWSentinel</h1>
             <p className="text-gray-400 text-sm">License Management Dashboard</p>
           </div>
-          <button onClick={() => setAuthed(false)} className="text-gray-400 hover:text-white text-sm">Logout</button>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-2">
+              {(['licenses', 'plans'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition ${
+                    tab === t ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {t === 'licenses' ? 'Licenses' : 'Plans'}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setAuthed(false)} className="text-gray-400 hover:text-white text-sm">Logout</button>
+          </div>
         </div>
 
+        {tab === 'plans' ? (
+          /* Plans availability tab */
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <h2 className="text-lg font-semibold mb-1">Plan Availability</h2>
+            <p className="text-gray-400 text-sm mb-6">Toggle whether the Purchase button is active on the public page.</p>
+            <div className="flex flex-col gap-4">
+              {Object.keys(PLAN_LABELS).map(plan => {
+                const available = planAvailability[plan] ?? true;
+                return (
+                  <div key={plan} className="flex items-center justify-between bg-gray-800 rounded-xl px-5 py-4">
+                    <div>
+                      <p className="font-medium text-white">{PLAN_LABELS[plan]}</p>
+                      <p className={`text-xs mt-0.5 ${available ? 'text-green-400' : 'text-red-400'}`}>
+                        {available ? 'Purchase button active' : 'Purchase button disabled'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => togglePlan(plan, !available)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+                        available ? 'bg-green-500' : 'bg-gray-600'
+                      }`}
+                      aria-label={`Toggle ${PLAN_LABELS[plan]}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                          available ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <>
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           {[
@@ -277,6 +352,8 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );
