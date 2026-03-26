@@ -403,7 +403,7 @@ export default function Home() {
           FiveM Anticheat
         </span>
 
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://r2.fivemanage.com/6i9Nw4DbfIJjqzti98x40/NewProject(1).png"
