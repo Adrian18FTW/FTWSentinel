@@ -1,18 +1,21 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 
-const KEY = process.env.SESSION_SECRET ?? (() => {
-  if (process.env.NODE_ENV === 'production') {
+const KEY = process.env.SESSION_SECRET ?? 'dev-only-secret-do-not-use-in-prod';
+
+function getKey(): string {
+  const k = process.env.SESSION_SECRET ?? '';
+  if (!k && process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET env var is required in production');
   }
-  return 'dev-only-secret-do-not-use-in-prod';
-})();
+  return k || KEY;
+}
 const COOKIE = 'ftw_session';
 const MAX_AGE_DEFAULT = 60 * 60 * 24 * 7;      // 7 days
 const MAX_AGE_REMEMBER = 60 * 60 * 24 * 30;    // 30 days
 
 function sign(payload: string): string {
-  const sig = createHmac('sha256', KEY).update(payload).digest('base64url');
+  const sig = createHmac('sha256', getKey()).update(payload).digest('base64url');
   return `${payload}.${sig}`;
 }
 
