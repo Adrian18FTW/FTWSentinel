@@ -430,7 +430,7 @@ export default function Home() {
           </a>
 
           <button
-            onClick={() => setOpen((v) => !v)}
+            onClick={() => { setOpen((v) => !v); setPlansOpen(false); }}
             className="inline-flex items-center gap-2 rounded-full border border-indigo-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-indigo-300 backdrop-blur-sm transition-all duration-300 hover:bg-indigo-500/20 hover:border-indigo-400 hover:text-white hover:scale-105 active:scale-95"
           >
             <span className="inline-block transition-transform duration-300" style={{ transform: open ? "rotate(45deg)" : "rotate(0deg)" }}>
@@ -440,7 +440,7 @@ export default function Home() {
           </button>
 
           <button
-            onClick={() => setPlansOpen((v) => !v)}
+            onClick={() => { setPlansOpen((v) => !v); setOpen(false); }}
             className="inline-flex items-center gap-2 rounded-full border border-purple-500/40 bg-white/5 px-8 py-3.5 text-sm font-semibold text-purple-300 backdrop-blur-sm transition-all duration-300 hover:bg-purple-500/20 hover:border-purple-400 hover:text-white hover:scale-105 active:scale-95"
           >
             <span className="inline-block transition-transform duration-300" style={{ transform: plansOpen ? "rotate(45deg)" : "rotate(0deg)" }}>

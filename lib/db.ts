@@ -63,6 +63,39 @@ export async function deleteLicense(id: number) {
   await sql`DELETE FROM licenses WHERE id = ${id}`;
 }
 
+export async function initPlanAvailability() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS plan_availability (
+      plan      VARCHAR(16) PRIMARY KEY,
+      available BOOLEAN     NOT NULL DEFAULT TRUE
+    )
+  `;
+  // Seed defaults if empty
+  await sql`
+    INSERT INTO plan_availability (plan, available)
+    VALUES ('1month', TRUE), ('3month', TRUE), ('6month', TRUE)
+    ON CONFLICT (plan) DO NOTHING
+  `;
+}
+
+export async function getPlanAvailability(): Promise<Record<string, boolean>> {
+  await initPlanAvailability();
+  const rows = await sql`SELECT plan, available FROM plan_availability`;
+  const result: Record<string, boolean> = { '1month': true, '3month': true, '6month': true };
+  for (const row of rows) result[row.plan] = row.available;
+  return result;
+}
+
+export async function setPlanAvailability(plan: string, available: boolean): Promise<Record<string, boolean>> {
+  await initPlanAvailability();
+  await sql`
+    INSERT INTO plan_availability (plan, available)
+    VALUES (${plan}, ${available})
+    ON CONFLICT (plan) DO UPDATE SET available = ${available}
+  `;
+  return getPlanAvailability();
+}
+
 export async function initCryptoOrders() {
   await sql`
     CREATE TABLE IF NOT EXISTS crypto_orders (

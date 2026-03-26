@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-memory store (persists per server process)
-// Replace with DB/KV if you need persistence across restarts
-const availability: Record<string, boolean> = {
-  '1month': true,
-  '3month': true,
-  '6month': true,
-};
+import { getPlanAvailability, setPlanAvailability } from '@/lib/db';
 
 export async function GET() {
+  const availability = await getPlanAvailability();
   return NextResponse.json(availability);
 }
 
@@ -17,11 +11,11 @@ export async function POST(req: NextRequest) {
   if (secret !== process.env.ADMIN_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const body = await req.json();
-  const { plan, available } = body as { plan: string; available: boolean };
-  if (!(plan in availability)) {
+  const { plan, available } = await req.json() as { plan: string; available: boolean };
+  const validPlans = ['1month', '3month', '6month'];
+  if (!validPlans.includes(plan)) {
     return NextResponse.json({ error: 'Unknown plan' }, { status: 400 });
   }
-  availability[plan] = available;
-  return NextResponse.json(availability);
+  const updated = await setPlanAvailability(plan, available);
+  return NextResponse.json(updated);
 }
