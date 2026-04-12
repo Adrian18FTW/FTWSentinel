@@ -344,6 +344,20 @@ export default function Home() {
       )}
 
       {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />}
+
+      {/* Discord widget — bottom-right */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <iframe
+          src="https://discord.com/widget?id=1484894298020384829&theme=dark"
+          width="350"
+          height="500"
+          allowTransparency={true}
+          frameBorder="0"
+          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+          title="Discord"
+          className="rounded-xl shadow-2xl shadow-indigo-500/20"
+        />
+      </div>
     </div>
   );
 }
