@@ -188,7 +188,7 @@ export async function getMinecraftLicense(customerId: number): Promise<Minecraft
   const rows = await sql`
     SELECT * FROM minecraft_licenses WHERE customer_id = ${customerId}
   `;
-  return rows[0] ?? null;
+  return (rows[0] as MinecraftLicense) ?? null;
 }
 
 export async function validateMinecraftLicense(
@@ -297,7 +297,7 @@ export async function getMinecraftStats(customerId: number): Promise<MinecraftSt
   const rows = await sql`
     SELECT * FROM minecraft_stats WHERE customer_id = ${customerId}
   `;
-  return rows[0] ?? null;
+  return (rows[0] as MinecraftStats) ?? null;
 }
 
 export async function updateMinecraftPlayers(
