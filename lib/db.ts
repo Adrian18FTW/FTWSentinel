@@ -207,5 +207,53 @@ export async function resetLicenseIp(id: number) {
   await sql`UPDATE licenses SET ip = '', ip_locked = FALSE WHERE id = ${id}`;
 }
 
+export async function activateLicense(id: number) {
+  await sql`UPDATE licenses SET active = TRUE WHERE id = ${id}`;
+}
+
+// ---------------------------------------------------------------------------
+// Validation log — keeps a record of every activation attempt from FiveM
+// ---------------------------------------------------------------------------
+
+export async function initValidateLog() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS validate_log (
+      id          SERIAL PRIMARY KEY,
+      license_key VARCHAR(64)  NOT NULL,
+      ip          VARCHAR(64)  NOT NULL,
+      file        VARCHAR(256) NOT NULL DEFAULT '',
+      result      VARCHAR(32)  NOT NULL,
+      created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+  // Index on license_key for fast per-key history lookups
+  await sql`
+    CREATE INDEX IF NOT EXISTS validate_log_key_idx ON validate_log (license_key)
+  `;
+}
+
+export async function logValidation(
+  licenseKey: string,
+  ip: string,
+  file: string,
+  result: string
+) {
+  await initValidateLog();
+  await sql`
+    INSERT INTO validate_log (license_key, ip, file, result)
+    VALUES (${licenseKey}, ${ip}, ${file}, ${result})
+  `;
+}
+
+export async function getValidateLog(licenseKey: string, limit = 50) {
+  await initValidateLog();
+  return sql`
+    SELECT * FROM validate_log
+    WHERE license_key = ${licenseKey}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
+}
+
 export { sql };
 

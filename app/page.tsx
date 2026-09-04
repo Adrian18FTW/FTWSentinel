@@ -229,16 +229,24 @@ export default function Home() {
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" style={{ zIndex: 2 }} />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(99,102,241,0.12)_0%,transparent_70%)] pointer-events-none" style={{ zIndex: 2 }} />
 
-      {/* Top-right nav */}
-      <div className="absolute top-4 right-4 flex items-center gap-2" style={{ zIndex: 10 }}>
-        {loggedIn ? (
-          <a href="/customer" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Account</a>
-        ) : (
-          <>
-            <a href="/customer/login" className="text-zinc-400 hover:text-white text-xs border border-white/10 bg-white/5 rounded-full px-3 py-1.5 transition hover:border-white/30 backdrop-blur-sm">Sign in</a>
-            <a href="/customer/register" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Sign up</a>
-          </>
-        )}
+      {/* Top nav */}
+      <div className="absolute top-4 left-0 right-0 flex items-center justify-between px-6" style={{ zIndex: 10 }}>
+        <a href="/minecraft" className="text-emerald-400 hover:text-emerald-300 text-sm font-semibold flex items-center gap-2 transition hover:scale-105 active:scale-95">
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M4 2h16v2H4zm0 4h16v2H4zm0 4h16v2H4zm0 4h16v2H4zm0 4h16v2H4z"/>
+          </svg>
+          Minecraft
+        </a>
+        <div className="flex items-center gap-2">
+          {loggedIn ? (
+            <a href="/customer" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Account</a>
+          ) : (
+            <>
+              <a href="/customer/login" className="text-zinc-400 hover:text-white text-xs border border-white/10 bg-white/5 rounded-full px-3 py-1.5 transition hover:border-white/30 backdrop-blur-sm">Sign in</a>
+              <a href="/customer/register" className="text-white text-xs rounded-full px-3 py-1.5 transition hover:opacity-90 bg-gradient-to-r from-indigo-500 to-purple-500 font-semibold">Sign up</a>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="relative flex flex-col items-center gap-8 px-6 text-center" style={{ zIndex: 3 }}>
