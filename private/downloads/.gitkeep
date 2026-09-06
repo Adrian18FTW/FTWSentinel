@@ -1,0 +1,3 @@
+# Private downloads folder
+# Files here are NOT publicly accessible
+# Only served through authenticated API endpoints

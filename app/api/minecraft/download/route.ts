@@ -13,7 +13,8 @@ export async function GET() {
 
     await generateMinecraftLicense(customerId);
 
-    const jarPath = join(process.cwd(), 'public', 'downloads', 'FTWSentinel.jar');
+    // Store JAR in private folder - NOT accessible via public URL
+    const jarPath = join(process.cwd(), 'private', 'downloads', 'FTWSentinel.jar');
     
     try {
       const fileBuffer = await readFile(jarPath);
