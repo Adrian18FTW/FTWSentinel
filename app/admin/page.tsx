@@ -29,12 +29,32 @@ const PLAN_LABELS: Record<string, string> = {
   '6month': '6 Months',
 };
 
+interface ProductError {
+  id: string;
+  error: string;
+  stackTrace: string;
+  timestamp: number;
+  resourceName: string;
+  serverIp: string;
+  file: string;
+  receivedAt: number;
+}
+
+interface ErrorStats {
+  totalErrors: number;
+  serverCount: number;
+  fileBreakdown: Record<string, number>;
+  serverBreakdown: Record<string, number>;
+}
+
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<'licenses' | 'plans' | 'customers'>('licenses');
+  const [tab, setTab] = useState<'licenses' | 'plans' | 'customers' | 'errors'>('licenses');
   const [licenses, setLicenses] = useState<License[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [productErrors, setProductErrors] = useState<ProductError[]>([]);
+  const [errorStats, setErrorStats] = useState<ErrorStats | null>(null);
   const [planAvailability, setPlanAvailability] = useState<Record<string, boolean>>({
     '1month': true, '3month': true, '6month': true,
   });
@@ -44,6 +64,9 @@ export default function AdminPage() {
   const [newKey, setNewKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'expired' | 'revoked'>('all');
+  const [errorFilter, setErrorFilter] = useState('');
+  const [selectedServer, setSelectedServer] = useState<string>('all');
+  const [expandedError, setExpandedError] = useState<string | null>(null);
 
   const fetchLicenses = useCallback(async (s: string) => {
     const res = await fetch('/api/licenses', { headers: { 'x-admin-secret': s } });
@@ -58,6 +81,28 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/customers', { headers: { 'x-admin-secret': s } });
     if (res.ok) setCustomers(await res.json());
   }, []);
+
+  const fetchErrors = useCallback(async (s: string) => {
+    const res = await fetch('/api/errors/list', { headers: { 'x-admin-secret': s } });
+    if (res.ok) {
+      const data = await res.json();
+      setProductErrors(data.errors || []);
+      setErrorStats(data.stats || null);
+    }
+  }, []);
+
+  const clearErrors = async () => {
+    if (!confirm('Clear all product errors? This action cannot be undone.')) return;
+    const res = await fetch('/api/errors/clear', {
+      method: 'POST',
+      headers: { 'x-admin-secret': secret },
+    });
+    if (res.ok) {
+      setProductErrors([]);
+      setErrorStats(null);
+      alert('All errors cleared successfully');
+    }
+  };
 
   const customerAction = async (id: number, action: 'suspend' | 'unsuspend' | 'delete') => {
     await fetch('/api/admin/customers', {
@@ -84,8 +129,8 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (authed) { fetchLicenses(secret); fetchPlans(); fetchCustomers(secret); }
-  }, [authed, fetchLicenses, fetchPlans, fetchCustomers, secret]);
+    if (authed) { fetchLicenses(secret); fetchPlans(); fetchCustomers(secret); fetchErrors(secret); }
+  }, [authed, fetchLicenses, fetchPlans, fetchCustomers, fetchErrors, secret]);
 
   async function issue() {
     setLoading(true);
@@ -170,7 +215,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
-              {(['licenses', 'plans', 'customers'] as const).map(t => (
+              {(['licenses', 'plans', 'customers', 'errors'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -178,7 +223,12 @@ export default function AdminPage() {
                     tab === t ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                   }`}
                 >
-                  {t === 'licenses' ? 'Licenses' : t === 'plans' ? 'Plans' : 'Customers'}
+                  {t === 'licenses' ? 'Licenses' : t === 'plans' ? 'Plans' : t === 'customers' ? 'Customers' : 'Global Product Errors'}
+                  {t === 'errors' && errorStats && errorStats.totalErrors > 0 && (
+                    <span className="ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
+                      {errorStats.totalErrors}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -186,7 +236,209 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {tab === 'customers' ? (
+        {tab === 'errors' ? (
+          /* Global Product Errors Tab */
+          <div className="space-y-6">
+            {/* Error Statistics */}
+            {errorStats && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 border border-red-700/50 rounded-xl p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-red-300 text-xs uppercase tracking-wide font-medium">Total Errors</p>
+                      <p className="text-4xl font-bold text-white mt-2">{errorStats.totalErrors}</p>
+                    </div>
+                    <div className="w-14 h-14 bg-red-500/20 rounded-full flex items-center justify-center">
+                      <svg className="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-red-400/70 text-xs mt-3">Across all servers</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-700/50 rounded-xl p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-300 text-xs uppercase tracking-wide font-medium">Active Servers</p>
+                      <p className="text-4xl font-bold text-white mt-2">{errorStats.serverCount}</p>
+                    </div>
+                    <div className="w-14 h-14 bg-blue-500/20 rounded-full flex items-center justify-center">
+                      <svg className="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-blue-400/70 text-xs mt-3">Reporting errors</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border border-yellow-700/50 rounded-xl p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-yellow-300 text-xs uppercase tracking-wide font-medium">Most Troublesome</p>
+                      <p className="text-xl font-bold text-white mt-2 truncate">
+                        {Object.keys(errorStats.fileBreakdown)[0] || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="w-14 h-14 bg-yellow-500/20 rounded-full flex items-center justify-center">
+                      <svg className="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="text-yellow-400/70 text-xs mt-3">
+                    {Object.values(errorStats.fileBreakdown)[0] || 0} errors
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* File Breakdown Chart */}
+            {errorStats && Object.keys(errorStats.fileBreakdown).length > 0 && (
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Error Distribution by File</h3>
+                <div className="space-y-3">
+                  {Object.entries(errorStats.fileBreakdown).slice(0, 5).map(([file, count]) => {
+                    const percentage = (count / errorStats.totalErrors) * 100;
+                    return (
+                      <div key={file}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm text-gray-300 font-mono">{file}</span>
+                          <span className="text-sm text-gray-400">{count} errors ({percentage.toFixed(1)}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-red-500 to-orange-500 h-2.5 rounded-full transition-all duration-500"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Filters and Controls */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Search errors, files, or messages..."
+                  value={errorFilter}
+                  onChange={e => setErrorFilter(e.target.value)}
+                  className="flex-1 min-w-64 bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                />
+                <select
+                  value={selectedServer}
+                  onChange={e => setSelectedServer(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="all">All Servers</option>
+                  {errorStats && Object.keys(errorStats.serverBreakdown).map(ip => (
+                    <option key={ip} value={ip}>{ip} ({errorStats.serverBreakdown[ip]})</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => fetchErrors(secret)}
+                  className="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition"
+                >
+                  Refresh
+                </button>
+                <button
+                  onClick={clearErrors}
+                  className="bg-red-600 hover:bg-red-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            {/* Errors List */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-800">
+                <h2 className="text-lg font-semibold text-white">Error Log</h2>
+                <p className="text-gray-400 text-xs mt-0.5">
+                  {(() => {
+                    const filtered = productErrors.filter(err => {
+                      const matchesSearch = !errorFilter || 
+                        err.error.toLowerCase().includes(errorFilter.toLowerCase()) ||
+                        err.file.toLowerCase().includes(errorFilter.toLowerCase()) ||
+                        err.stackTrace.toLowerCase().includes(errorFilter.toLowerCase());
+                      const matchesServer = selectedServer === 'all' || err.serverIp === selectedServer;
+                      return matchesSearch && matchesServer;
+                    });
+                    return `Showing ${filtered.length} of ${productErrors.length} errors`;
+                  })()}
+                </p>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {productErrors.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-400 font-medium">No errors reported yet</p>
+                    <p className="text-gray-500 text-sm mt-1">Errors from all servers running FTWSentinel will appear here</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-800">
+                    {productErrors
+                      .filter(err => {
+                        const matchesSearch = !errorFilter || 
+                          err.error.toLowerCase().includes(errorFilter.toLowerCase()) ||
+                          err.file.toLowerCase().includes(errorFilter.toLowerCase()) ||
+                          err.stackTrace.toLowerCase().includes(errorFilter.toLowerCase());
+                        const matchesServer = selectedServer === 'all' || err.serverIp === selectedServer;
+                        return matchesSearch && matchesServer;
+                      })
+                      .map(err => (
+                        <div key={err.id} className="p-4 hover:bg-gray-800/50 transition">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-2">
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-red-900/30 border border-red-700/50 text-red-300 text-xs font-medium">
+                                  <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                  </svg>
+                                  ERROR
+                                </span>
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-800 border border-gray-700 text-gray-300 text-xs font-mono">
+                                  {err.serverIp}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(err.timestamp * 1000).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-white font-medium text-sm mb-1 break-words">{err.error}</p>
+                              <div className="flex items-center gap-2 text-xs text-gray-400">
+                                <span className="font-mono">{err.file}</span>
+                                <span>•</span>
+                                <span>{err.resourceName}</span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => setExpandedError(expandedError === err.id ? null : err.id)}
+                              className="text-gray-400 hover:text-white transition text-xs font-medium whitespace-nowrap"
+                            >
+                              {expandedError === err.id ? 'Hide Stack' : 'Show Stack'}
+                            </button>
+                          </div>
+                          {expandedError === err.id && (
+                            <div className="mt-3 bg-gray-950 border border-gray-800 rounded-lg p-3 overflow-x-auto">
+                              <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap">{err.stackTrace}</pre>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : tab === 'customers' ? (
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <div className="p-4 border-b border-gray-800">
               <h2 className="text-lg font-semibold">Customers</h2>

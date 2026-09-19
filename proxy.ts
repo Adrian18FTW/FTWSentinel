@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const ALLOWED_IP = '128.127.120.93';
+const ALLOWED_IP = '128.127.121.104';
 
 const PROTECTED = ['/admin', '/api/licenses', '/api/issue', '/api/reset-ip'];
 
