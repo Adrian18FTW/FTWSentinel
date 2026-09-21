@@ -239,8 +239,9 @@ export async function POST(req: NextRequest) {
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
     
     try {
-      // Dynamic import for CommonJS module
-      const archiver = (await import('archiver')).default;
+      // Dynamic import for archiver - it's a CommonJS module with named exports
+      const archiverModule = await import('archiver');
+      const archiver = archiverModule.default || archiverModule;
       
       await new Promise<void>((resolve, reject) => {
         const output = createWriteStream(zipPath);
