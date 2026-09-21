@@ -14,7 +14,8 @@ import { promisify } from 'util';
 import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, createWriteStream } from 'fs';
+import archiver from 'archiver';
 import * as obfuscator from '@/lib/obfuscator-wasm';
 import {
   createDownload,
@@ -233,16 +234,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 8. Create ZIP archive
+    // 8. Create ZIP archive using archiver (Node.js library)
     console.log('[admin/downloads/generate] Creating ZIP archive...');
     
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
-    const zipCmd = process.platform === 'win32'
-      ? `powershell Compress-Archive -Path "${outputPath}\\*" -DestinationPath "${zipPath}" -Force`
-      : `cd "${outputPath}" && zip -r "${zipPath}" .`;
     
     try {
-      await execAsync(zipCmd);
+      await new Promise<void>((resolve, reject) => {
+        const output = createWriteStream(zipPath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', () => {
+          console.log('[admin/downloads/generate] ZIP created:', archive.pointer(), 'bytes');
+          resolve();
+        });
+
+        archive.on('error', (err) => {
+          reject(err);
+        });
+
+        archive.pipe(output);
+        archive.directory(outputPath, false); // false = don't include parent folder
+        archive.finalize();
+      });
       
       if (!existsSync(zipPath)) {
         throw new Error('ZIP creation failed');
