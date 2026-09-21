@@ -13,14 +13,13 @@ export async function POST(req: NextRequest) {
     }
     
     // Delete all errors from database
-    const result = await sql`DELETE FROM sentinel_errors`;
+    await sql`DELETE FROM sentinel_errors`;
     
     console.log('[Sentinel Errors] All errors cleared by admin');
     
     return NextResponse.json({ 
       success: true, 
-      message: 'All errors cleared',
-      deletedCount: result.count || 0
+      message: 'All errors cleared'
     });
     
   } catch (error) {
