@@ -255,5 +255,166 @@ export async function getValidateLog(licenseKey: string, limit = 50) {
   `;
 }
 
+// ---------------------------------------------------------------------------
+// Downloads — tracks customer-specific obfuscated builds
+// ---------------------------------------------------------------------------
+
+export async function initDownloads() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS downloads (
+      id                SERIAL PRIMARY KEY,
+      customer_id       INTEGER      NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      obfuscation_key   VARCHAR(64)  NOT NULL,
+      ip_address        VARCHAR(64)  NOT NULL,
+      user_agent        TEXT         NOT NULL,
+      email             VARCHAR(255) NOT NULL,
+      timestamp         TIMESTAMPTZ  NOT NULL,
+      download_count    INTEGER      NOT NULL DEFAULT 1,
+      resource_hash     VARCHAR(64),
+      created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+  // Index for fast lookups by customer
+  await sql`CREATE INDEX IF NOT EXISTS downloads_customer_idx ON downloads (customer_id)`;
+  // Index for key lookups during validation
+  await sql`CREATE INDEX IF NOT EXISTS downloads_key_idx ON downloads (obfuscation_key)`;
+}
+
+export async function createDownload(
+  customerId: number,
+  obfuscationKey: string,
+  ipAddress: string,
+  userAgent: string,
+  email: string,
+  timestamp: Date,
+  resourceHash?: string
+) {
+  await initDownloads();
+  const rows = await sql`
+    INSERT INTO downloads (
+      customer_id, obfuscation_key, ip_address, user_agent, 
+      email, timestamp, resource_hash
+    )
+    VALUES (
+      ${customerId}, ${obfuscationKey}, ${ipAddress}, ${userAgent},
+      ${email}, ${timestamp.toISOString()}, ${resourceHash ?? null}
+    )
+    RETURNING *
+  `;
+  return rows[0];
+}
+
+export async function getLatestDownload(customerId: number) {
+  await initDownloads();
+  const rows = await sql`
+    SELECT * FROM downloads 
+    WHERE customer_id = ${customerId}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+export async function getDownloadByKey(obfuscationKey: string) {
+  await initDownloads();
+  const rows = await sql`
+    SELECT * FROM downloads
+    WHERE obfuscation_key = ${obfuscationKey}
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+export async function incrementDownloadCount(id: number) {
+  await sql`
+    UPDATE downloads
+    SET download_count = download_count + 1
+    WHERE id = ${id}
+  `;
+}
+
+export async function getAllDownloads() {
+  await initDownloads();
+  return sql`
+    SELECT d.*, c.email as customer_email
+    FROM downloads d
+    JOIN customers c ON d.customer_id = c.id
+    ORDER BY d.created_at DESC
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Security Logs — tracks validation attempts and security events
+// ---------------------------------------------------------------------------
+
+export async function initSecurityLogs() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS security_logs (
+      id            SERIAL PRIMARY KEY,
+      customer_id   INTEGER,
+      license_key   VARCHAR(64),
+      event         VARCHAR(50)  NOT NULL,
+      details       JSONB,
+      ip            VARCHAR(64),
+      timestamp     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+  // Index for fast lookups by customer
+  await sql`CREATE INDEX IF NOT EXISTS security_logs_customer_idx ON security_logs (customer_id)`;
+  // Index for event type filtering
+  await sql`CREATE INDEX IF NOT EXISTS security_logs_event_idx ON security_logs (event)`;
+  // Index for time-based queries
+  await sql`CREATE INDEX IF NOT EXISTS security_logs_timestamp_idx ON security_logs (timestamp DESC)`;
+}
+
+export async function logSecurityEvent(
+  event: string,
+  details: Record<string, any>,
+  ip?: string,
+  customerId?: number,
+  licenseKey?: string
+) {
+  await initSecurityLogs();
+  await sql`
+    INSERT INTO security_logs (customer_id, license_key, event, details, ip)
+    VALUES (
+      ${customerId ?? null},
+      ${licenseKey ?? null},
+      ${event},
+      ${JSON.stringify(details)},
+      ${ip ?? null}
+    )
+  `;
+}
+
+export async function getSecurityLogs(limit = 100) {
+  await initSecurityLogs();
+  return sql`
+    SELECT * FROM security_logs
+    ORDER BY timestamp DESC
+    LIMIT ${limit}
+  `;
+}
+
+export async function getSecurityLogsByCustomer(customerId: number, limit = 50) {
+  await initSecurityLogs();
+  return sql`
+    SELECT * FROM security_logs
+    WHERE customer_id = ${customerId}
+    ORDER BY timestamp DESC
+    LIMIT ${limit}
+  `;
+}
+
+export async function getSecurityLogsByEvent(event: string, limit = 50) {
+  await initSecurityLogs();
+  return sql`
+    SELECT * FROM security_logs
+    WHERE event = ${event}
+    ORDER BY timestamp DESC
+    LIMIT ${limit}
+  `;
+}
+
 export { sql };
 

@@ -50,7 +50,7 @@ interface ErrorStats {
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<'licenses' | 'plans' | 'customers' | 'errors'>('licenses');
+  const [tab, setTab] = useState<'licenses' | 'plans' | 'customers' | 'errors' | 'downloads'>('licenses');
   const [licenses, setLicenses] = useState<License[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [productErrors, setProductErrors] = useState<ProductError[]>([]);
@@ -215,7 +215,7 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
-              {(['licenses', 'plans', 'customers', 'errors'] as const).map(t => (
+              {(['licenses', 'plans', 'customers', 'errors', 'downloads'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -676,6 +676,182 @@ export default function AdminPage() {
           </div>
         </div>
         </>
+        )}
+
+        {tab === 'downloads' && (
+          /* Admin Downloads Tab - Obfuscated Builds */
+          <div className="space-y-6">
+            {/* Warning Banner */}
+            <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-yellow-300 font-semibold text-sm">Development Testing Mode</h3>
+                  <p className="text-yellow-200/80 text-xs mt-1">
+                    This feature is currently admin-only for testing. Each download generates a uniquely obfuscated build 
+                    locked to your fingerprint (IP, user-agent, email, timestamp).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Download Card */}
+            <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-700/50 rounded-xl p-6">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">FTWSentinel</h2>
+                  <p className="text-blue-300 text-sm mt-1">Obfuscated Anti-Cheat Resource</p>
+                  <p className="text-blue-400/70 text-xs mt-2">Version 1.0.0 • Customer-Specific Build</p>
+                </div>
+                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+                  <svg className="w-9 h-9 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="bg-blue-950/50 rounded-lg p-4 mb-6 space-y-2 text-sm">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-blue-200">Unique obfuscation key per download</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-blue-200">Hardware-locked to your identity</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-blue-200">Runtime key validation on every start</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-blue-200">All 44 modules fully obfuscated</span>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!confirm('Generate and download a uniquely obfuscated build? This will be locked to your current IP and user-agent.')) return;
+                  
+                  const btn = document.getElementById('download-btn') as HTMLButtonElement;
+                  if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = 'Generating Build...';
+                  }
+                  
+                  try {
+                    const res = await fetch('/api/admin/downloads/generate', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-secret': secret
+                      }
+                    });
+                    
+                    if (!res.ok) {
+                      const error = await res.json();
+                      alert(`Error: ${error.error || 'Failed to generate build'}`);
+                      return;
+                    }
+                    
+                    // Download the file
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'FTWSentinel-Admin.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    alert('Build downloaded successfully! Deploy to your FiveM server and start the resource.');
+                  } catch (err) {
+                    console.error(err);
+                    alert('Failed to download build. Check console for details.');
+                  } finally {
+                    if (btn) {
+                      btn.disabled = false;
+                      btn.textContent = 'Download Obfuscated Build';
+                    }
+                  }
+                }}
+                id="download-btn"
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg px-6 py-3.5 font-semibold text-base transition-all duration-200 shadow-lg hover:shadow-blue-500/50 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Obfuscated Build
+              </button>
+
+              <p className="text-blue-300/60 text-xs text-center mt-4">
+                Build will be generated on-the-fly and locked to your current session
+              </p>
+            </div>
+
+            {/* Technical Info */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">How It Works</h3>
+              <div className="space-y-4 text-sm text-gray-300">
+                <div>
+                  <h4 className="text-white font-medium mb-1">1. Download-Time</h4>
+                  <p className="text-gray-400">
+                    When you click download, your IP, user-agent, email, and timestamp are captured and used to generate 
+                    a unique SHA-256 obfuscation key. The resource is obfuscated using this key and stored with your fingerprint.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-white font-medium mb-1">2. Runtime Validation</h4>
+                  <p className="text-gray-400">
+                    When FTWSentinel starts on your server, it requests the deobfuscation key from the backend by providing 
+                    your license key and server IP. The backend validates the license and returns the key with a 1-hour TTL.
+                  </p>
+                </div>
+                <div>
+                  <h4 className="text-white font-medium mb-1">3. Decryption</h4>
+                  <p className="text-gray-400">
+                    The resource uses the key to decrypt critical code sections at runtime. The key expires after 1 hour, 
+                    forcing re-validation. This prevents unauthorized redistribution and allows real-time license revocation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Info Card */}
+            <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-white mb-4">Testing Checklist</h3>
+              <div className="space-y-3">
+                {[
+                  'Download generates unique obfuscation key',
+                  'Key is stored in downloads table with fingerprint',
+                  'Obfuscator runs with --encryption-key argument',
+                  'ZIP file contains obfuscated Lua files',
+                  'Resource starts on FiveM server',
+                  'Runtime validation endpoint returns key',
+                  'Decryption succeeds with correct key',
+                  'All detection modules function normally'
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-gray-500 text-xs">{i + 1}</span>
+                    </div>
+                    <span className="text-gray-300 text-sm">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>
