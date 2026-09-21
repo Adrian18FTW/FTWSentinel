@@ -14,7 +14,7 @@ import { promisify } from 'util';
 import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { existsSync, createWriteStream } from 'fs';
+import { existsSync } from 'fs';
 import * as obfuscator from '@/lib/obfuscator-wasm';
 import {
   createDownload,
@@ -234,38 +234,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 8. Create ZIP archive using archiver (Node.js library)
+    // 8. Create ZIP archive using adm-zip (simpler, no stream issues)
     console.log('[admin/downloads/generate] Creating ZIP archive...');
     
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
     
     try {
-      // Use require for CommonJS module compatibility
-      // @ts-ignore - using require in ESM context
-      const archiver = require('archiver');
+      const AdmZip = require('adm-zip');
+      const zip = new AdmZip();
       
-      await new Promise<void>((resolve, reject) => {
-        const output = createWriteStream(zipPath);
-        // @ts-ignore - archiver typing issues
-        const archive = archiver('zip', { zlib: { level: 9 } });
-
-        output.on('close', () => {
-          console.log('[admin/downloads/generate] ZIP created:', archive.pointer(), 'bytes');
-          resolve();
-        });
-
-        output.on('error', (err: Error) => {
-          reject(err);
-        });
-
-        archive.on('error', (err: Error) => {
-          reject(err);
-        });
-
-        archive.pipe(output);
-        archive.directory(outputPath, false); // false = don't include parent folder
-        archive.finalize();
-      });
+      // Add all files from output directory
+      zip.addLocalFolder(outputPath);
+      
+      // Write ZIP file
+      zip.writeZip(zipPath);
+      
+      console.log('[admin/downloads/generate] ZIP created');
       
       if (!existsSync(zipPath)) {
         throw new Error('ZIP creation failed');

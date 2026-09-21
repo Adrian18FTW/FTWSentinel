@@ -11,7 +11,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@types/archiver": "^8.0.0",
-    "archiver": "^8.0.0",
+    "adm-zip": "^0.6.1",
     "bcryptjs": "^3.0.3",
     "next": "16.2.0",
     "react": "19.2.4",
