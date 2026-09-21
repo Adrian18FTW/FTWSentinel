@@ -15,7 +15,6 @@ import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync, createWriteStream } from 'fs';
-import archiver from 'archiver';
 import * as obfuscator from '@/lib/obfuscator-wasm';
 import {
   createDownload,
@@ -240,6 +239,9 @@ export async function POST(req: NextRequest) {
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
     
     try {
+      // Dynamic import for CommonJS module
+      const archiver = (await import('archiver')).default;
+      
       await new Promise<void>((resolve, reject) => {
         const output = createWriteStream(zipPath);
         const archive = archiver('zip', { zlib: { level: 9 } });
