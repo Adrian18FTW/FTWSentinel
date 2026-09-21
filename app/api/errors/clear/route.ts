@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { neon } from '@neondatabase/serverless';
 
-const ERRORS_DIR = join(process.cwd(), 'data');
-const ERRORS_FILE = join(ERRORS_DIR, 'sentinel_errors.json');
+const sql = neon(process.env.DATABASE_URL!);
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 export async function POST(req: NextRequest) {
@@ -15,17 +12,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Ensure directory exists
-    if (!existsSync(ERRORS_DIR)) {
-      await mkdir(ERRORS_DIR, { recursive: true });
-    }
-    
-    // Clear all errors by writing empty array
-    await writeFile(ERRORS_FILE, JSON.stringify({ errors: [] }, null, 2));
+    // Delete all errors from database
+    const result = await sql`DELETE FROM sentinel_errors`;
     
     console.log('[Sentinel Errors] All errors cleared by admin');
     
-    return NextResponse.json({ success: true, message: 'All errors cleared' });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'All errors cleared',
+      deletedCount: result.count || 0
+    });
     
   } catch (error) {
     console.error('[Sentinel Errors] Failed to clear errors:', error);

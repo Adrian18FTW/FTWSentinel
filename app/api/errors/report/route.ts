@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, readFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { neon } from '@neondatabase/serverless';
 import crypto from 'crypto';
 
-const ERRORS_DIR = join(process.cwd(), 'data');
-const ERRORS_FILE = join(ERRORS_DIR, 'sentinel_errors.json');
+const sql = neon(process.env.DATABASE_URL!);
 
 interface ErrorReport {
   error: string;
@@ -23,51 +20,62 @@ interface ErrorPayload {
   sentAt: number;
 }
 
-interface StoredError extends ErrorReport {
-  id: string;
-  receivedAt: number;
+// Initialize errors table
+async function initErrorsTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS sentinel_errors (
+      id            SERIAL PRIMARY KEY,
+      error         TEXT NOT NULL,
+      stack_trace   TEXT NOT NULL,
+      timestamp     BIGINT NOT NULL,
+      resource_name VARCHAR(64) NOT NULL,
+      server_ip     VARCHAR(64) NOT NULL,
+      file          VARCHAR(255) NOT NULL,
+      received_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_sentinel_errors_received 
+    ON sentinel_errors(received_at DESC)
+  `;
+  
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_sentinel_errors_server 
+    ON sentinel_errors(server_ip)
+  `;
 }
 
 // Simple HMAC verification to ensure requests come from legitimate FTWSentinel servers
 function verifyAuth(authHeader: string, serverIp: string, resourceName: string): boolean {
-  if (!authHeader) return false;
+  if (!authHeader) {
+    console.log('[Auth] No auth header provided');
+    return false;
+  }
   
   try {
+    const input = `${serverIp}:${resourceName}`;
     const expectedHmac = crypto
       .createHmac('sha256', 'sentinel_error_reporter')
-      .update(`${serverIp}:${resourceName}`)
+      .update(input)
       .digest('hex');
     
+    console.log('[Auth] Input:', input);
+    console.log('[Auth] Expected HMAC:', expectedHmac);
+    console.log('[Auth] Received HMAC:', authHeader);
+    console.log('[Auth] Match:', authHeader === expectedHmac);
+    
     return authHeader === expectedHmac;
-  } catch {
+  } catch (err) {
+    console.log('[Auth] Error:', err);
     return false;
   }
 }
 
-async function ensureErrorsFile(): Promise<void> {
-  if (!existsSync(ERRORS_DIR)) {
-    await mkdir(ERRORS_DIR, { recursive: true });
-  }
-  
-  if (!existsSync(ERRORS_FILE)) {
-    await writeFile(ERRORS_FILE, JSON.stringify({ errors: [] }, null, 2));
-  }
-}
-
-async function readErrors(): Promise<StoredError[]> {
-  await ensureErrorsFile();
-  const content = await readFile(ERRORS_FILE, 'utf-8');
-  const data = JSON.parse(content);
-  return data.errors || [];
-}
-
-async function writeErrors(errors: StoredError[]): Promise<void> {
-  await ensureErrorsFile();
-  await writeFile(ERRORS_FILE, JSON.stringify({ errors }, null, 2));
-}
-
 export async function POST(req: NextRequest) {
   try {
+    await initErrorsTable();
+    
     const authHeader = req.headers.get('x-sentinel-auth');
     const body: ErrorPayload = await req.json();
     
@@ -87,27 +95,26 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // Read existing errors
-    const existingErrors = await readErrors();
+    // Insert errors into database
+    for (const err of body.errors) {
+      await sql`
+        INSERT INTO sentinel_errors (error, stack_trace, timestamp, resource_name, server_ip, file)
+        VALUES (
+          ${err.error},
+          ${err.stackTrace},
+          ${err.timestamp},
+          ${err.resourceName},
+          ${err.serverIp},
+          ${err.file}
+        )
+      `;
+    }
     
-    // Add new errors with unique IDs
-    const newErrors: StoredError[] = body.errors.map(err => ({
-      ...err,
-      id: crypto.randomBytes(8).toString('hex'),
-      receivedAt: Date.now(),
-    }));
-    
-    // Prepend new errors (most recent first) and limit to 10,000 total
-    const updatedErrors = [...newErrors, ...existingErrors].slice(0, 10000);
-    
-    // Save to file
-    await writeErrors(updatedErrors);
-    
-    console.log(`[Sentinel Errors] Received ${newErrors.length} error(s) from ${body.serverIp}`);
+    console.log(`[Sentinel Errors] Received ${body.errors.length} error(s) from ${body.serverIp}`);
     
     return NextResponse.json({
       success: true,
-      received: newErrors.length,
+      received: body.errors.length,
       message: 'Errors recorded successfully'
     });
     
