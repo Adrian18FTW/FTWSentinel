@@ -243,6 +243,7 @@ export async function POST(req: NextRequest) {
       // Dynamic import for archiver
       const archiverModule = await import('archiver');
       // Handle both CommonJS and ES module exports
+      // @ts-ignore - archiver has complex module exports
       const createArchiver = archiverModule.default || archiverModule;
       
       await new Promise<void>((resolve, reject) => {
