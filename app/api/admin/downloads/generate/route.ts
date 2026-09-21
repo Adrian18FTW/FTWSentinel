@@ -240,18 +240,23 @@ export async function POST(req: NextRequest) {
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
     
     try {
-      // Dynamic import for archiver - it's a CommonJS module
+      // Dynamic import for archiver
       const archiverModule = await import('archiver');
-      // @ts-ignore - archiver is a CommonJS module, types are tricky
-      const archiver = archiverModule.default || archiverModule;
+      // Handle both CommonJS and ES module exports
+      const createArchiver = archiverModule.default || archiverModule;
       
       await new Promise<void>((resolve, reject) => {
         const output = createWriteStream(zipPath);
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        // @ts-ignore - archiver typing issues with dynamic import
+        const archive = createArchiver('zip', { zlib: { level: 9 } });
 
         output.on('close', () => {
           console.log('[admin/downloads/generate] ZIP created:', archive.pointer(), 'bytes');
           resolve();
+        });
+
+        output.on('error', (err: Error) => {
+          reject(err);
         });
 
         archive.on('error', (err: Error) => {
