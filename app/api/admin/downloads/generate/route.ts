@@ -239,8 +239,9 @@ export async function POST(req: NextRequest) {
     const zipPath = path.join(outputDir, 'FTWSentinel-Admin.zip');
     
     try {
-      // Dynamic import for archiver - it's a CommonJS module with named exports
+      // Dynamic import for archiver - it's a CommonJS module
       const archiverModule = await import('archiver');
+      // @ts-ignore - archiver is a CommonJS module, types are tricky
       const archiver = archiverModule.default || archiverModule;
       
       await new Promise<void>((resolve, reject) => {
