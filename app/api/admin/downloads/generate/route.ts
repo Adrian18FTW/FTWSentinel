@@ -35,7 +35,8 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@ftwsentinel.com';
 
 // Paths
 const SOURCE_PATH = path.join(process.cwd(), 'source', 'FTWSentinel');
-const OUTPUT_BASE = '/tmp/builds'; // Use /tmp for Vercel serverless (only writable directory)
+// Always use /tmp on serverless - it's the only writable directory
+const OUTPUT_BASE = process.env.VERCEL ? '/tmp/builds' : path.join(process.cwd(), 'builds');
 
 /**
  * Recursively read all Lua files from directory
