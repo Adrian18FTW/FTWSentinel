@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
           resolve();
         });
 
-        archive.on('error', (err) => {
+        archive.on('error', (err: Error) => {
           reject(err);
         });
 
