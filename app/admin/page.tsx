@@ -236,7 +236,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {tab === 'errors' ? (
+        {/* Tab Content */}
+        {tab === 'errors' && (
           /* Global Product Errors Tab */
           <div className="space-y-6">
             {/* Error Statistics */}
@@ -438,7 +439,9 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-        ) : tab === 'customers' ? (
+        )}
+
+        {tab === 'customers' && (
           <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
             <div className="p-4 border-b border-gray-800">
               <h2 className="text-lg font-semibold">Customers</h2>
@@ -485,7 +488,9 @@ export default function AdminPage() {
               </table>
             </div>
           </div>
-        ) : tab === 'plans' ? (
+        )}
+
+        {tab === 'plans' && (
           /* Plans availability tab */
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-1">Plan Availability</h2>
@@ -519,7 +524,9 @@ export default function AdminPage() {
               })}
             </div>
           </div>
-        ) : (
+        )}
+
+        {tab === 'licenses' && (
           <>
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
@@ -678,7 +685,7 @@ export default function AdminPage() {
         </>
         )}
 
-        {tab === 'downloads' && (
+        {tab === 'downloads' ? (
           /* Admin Downloads Tab - Obfuscated Builds */
           <div className="space-y-6">
             {/* Warning Banner */}
