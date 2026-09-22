@@ -17,6 +17,7 @@ async function ensureTables() {
         license_key VARCHAR(255) NOT NULL,
         server_ip INET NOT NULL,
         endpoint_type VARCHAR(50) NOT NULL,
+        validation_context VARCHAR(50) DEFAULT 'heartbeat',
         success BOOLEAN NOT NULL DEFAULT false,
         accessed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
@@ -35,6 +36,11 @@ async function ensureTables() {
     await sql`
       CREATE INDEX IF NOT EXISTS idx_validation_accessed 
       ON validation_tracking(accessed_at)
+    `;
+    
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_validation_context 
+      ON validation_tracking(validation_context)
     `;
 
     // Validation alerts table
@@ -102,68 +108,39 @@ export async function checkObfuscationBypass(
   try {
     await ensureTables();
     
-    // Get the most recent license validation
-    const lastLicense = await sql`
-      SELECT accessed_at
+    // Count ALL license validations
+    const licenseCount = await sql`
+      SELECT COUNT(*) as count
       FROM validation_tracking
       WHERE license_key = ${licenseKey}
         AND server_ip = ${serverIp}
         AND endpoint_type = 'license'
-      ORDER BY accessed_at DESC
-      LIMIT 1
     `;
     
-    if (!lastLicense[0]) {
-      return false; // No license validations yet
-    }
+    const totalLicenseValidations = parseInt(licenseCount[0]?.count || '0');
     
-    const lastLicenseTime = new Date(lastLicense[0].accessed_at);
-    
-    // Get the most recent obfuscation validation
-    const lastObfuscation = await sql`
-      SELECT accessed_at
+    // Count obfuscation validations (each = one resource start)
+    const obfuscationCount = await sql`
+      SELECT COUNT(*) as count
       FROM validation_tracking
       WHERE license_key = ${licenseKey}
         AND server_ip = ${serverIp}
         AND endpoint_type = 'obfuscation'
-      ORDER BY accessed_at DESC
-      LIMIT 1
     `;
     
-    const lastObfuscationTime = lastObfuscation[0] ? new Date(lastObfuscation[0].accessed_at) : null;
+    const totalObfuscationValidations = parseInt(obfuscationCount[0]?.count || '0');
     
-    // If no obfuscation validation ever, check if we have multiple license validations
-    if (!lastObfuscationTime) {
-      const licenseCount = await sql`
-        SELECT COUNT(*) as count
-        FROM validation_tracking
-        WHERE license_key = ${licenseKey}
-          AND server_ip = ${serverIp}
-          AND endpoint_type = 'license'
-      `;
-      
-      const count = parseInt(licenseCount[0]?.count || '0');
-      
-      if (count >= 2) {
-        // License validated 2+ times but obfuscation never called = bypass
-        await createBypassAlert(licenseKey, serverIp, 'License validated without obfuscation validation');
-        return true;
-      }
-      
-      return false;
-    }
-    
-    // Calculate time difference in seconds
-    const timeDiffSeconds = (lastLicenseTime.getTime() - lastObfuscationTime.getTime()) / 1000;
-    
-    // If obfuscation validation is older than license validation by more than 60 seconds
-    // it means resource was restarted without obfuscation validation
-    if (timeDiffSeconds > 60) {
-      await createBypassAlert(licenseKey, serverIp, `License validated ${Math.round(timeDiffSeconds)}s after last obfuscation`);
+    // If we have license validations but ZERO obfuscation validations = clear bypass
+    if (totalLicenseValidations >= 2 && totalObfuscationValidations === 0) {
+      await createBypassAlert(
+        licenseKey, 
+        serverIp, 
+        `${totalLicenseValidations} license validations with zero obfuscation validations`
+      );
       return true;
     }
     
-    return false; // Normal operation - obfuscation and license timestamps are close
+    return false;
   } catch (error) {
     console.error('[Validation Tracking] Check error:', error);
     return false;
