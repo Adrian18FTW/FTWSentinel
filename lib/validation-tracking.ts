@@ -102,74 +102,99 @@ export async function checkObfuscationBypass(
   try {
     await ensureTables();
     
-    // Count license validations in last 24 hours
-    const licenseResult = await sql`
-      SELECT COUNT(*) as count
-      FROM validation_tracking
-      WHERE license_key = ${licenseKey}
-        AND server_ip = ${serverIp}
-        AND endpoint_type = 'license'
-        AND accessed_at > NOW() - INTERVAL '24 hours'
-    `;
-    
-    const licenseCount = parseInt(licenseResult[0]?.count || '0');
-    
-    // Count obfuscation validations in last 24 hours
-    const obfuscationResult = await sql`
-      SELECT COUNT(*) as count
+    // Get the timestamp of the most recent obfuscation validation
+    const lastObfuscation = await sql`
+      SELECT accessed_at
       FROM validation_tracking
       WHERE license_key = ${licenseKey}
         AND server_ip = ${serverIp}
         AND endpoint_type = 'obfuscation'
-        AND accessed_at > NOW() - INTERVAL '24 hours'
+      ORDER BY accessed_at DESC
+      LIMIT 1
     `;
     
-    const obfuscationCount = parseInt(obfuscationResult[0]?.count || '0');
+    const lastObfuscationTime = lastObfuscation[0]?.accessed_at;
     
-    // If license validated 2+ times but obfuscation never validated, flag it
-    if (licenseCount >= 2 && obfuscationCount === 0) {
-      // Check if alert already exists
-      const existingAlert = await sql`
-        SELECT id FROM validation_alerts
+    if (!lastObfuscationTime) {
+      // No obfuscation validation ever - check how many license validations
+      const licenseCount = await sql`
+        SELECT COUNT(*) as count
+        FROM validation_tracking
         WHERE license_key = ${licenseKey}
           AND server_ip = ${serverIp}
-          AND alert_type = 'obfuscation_bypass'
-          AND resolved = false
-          AND created_at > NOW() - INTERVAL '24 hours'
-        LIMIT 1
+          AND endpoint_type = 'license'
       `;
       
-      if (existingAlert.length === 0) {
-        // Create new alert
-        await sql`
-          INSERT INTO validation_alerts (
-            license_key,
-            server_ip,
-            alert_type,
-            alert_message,
-            severity,
-            auto_action
-          )
-          VALUES (
-            ${licenseKey},
-            ${serverIp},
-            'obfuscation_bypass',
-            ${`License validated ${licenseCount} times without obfuscation validation in 24h`},
-            'critical',
-            'suspend'
-          )
-        `;
-        
-        console.log(`[Validation Tracking] CRITICAL: Obfuscation bypass detected for ${licenseKey} from ${serverIp}`);
-      }
+      const count = parseInt(licenseCount[0]?.count || '0');
       
-      return true; // Bypass detected
+      // If 2+ license validations without any obfuscation = bypass
+      if (count >= 2) {
+        await createBypassAlert(licenseKey, serverIp, count);
+        return true;
+      }
+    } else {
+      // Obfuscation validated before - check if license validated after last obfuscation
+      // without a new obfuscation (resource restart without obfuscation call)
+      const licenseAfterObfuscation = await sql`
+        SELECT COUNT(*) as count
+        FROM validation_tracking
+        WHERE license_key = ${licenseKey}
+          AND server_ip = ${serverIp}
+          AND endpoint_type = 'license'
+          AND accessed_at > ${lastObfuscationTime}
+      `;
+      
+      const countAfter = parseInt(licenseAfterObfuscation[0]?.count || '0');
+      
+      // If more than 2 license validations since last obfuscation = resource restarted without obfuscation
+      // (allows 2 for grace: one at startup, one for heartbeat)
+      if (countAfter > 2) {
+        await createBypassAlert(licenseKey, serverIp, countAfter);
+        return true;
+      }
     }
     
     return false; // Normal operation
   } catch (error) {
     console.error('[Validation Tracking] Check error:', error);
     return false;
+  }
+}
+
+async function createBypassAlert(licenseKey: string, serverIp: string, validationCount: number) {
+  // Check if alert already exists
+  const existingAlert = await sql`
+    SELECT id FROM validation_alerts
+    WHERE license_key = ${licenseKey}
+      AND server_ip = ${serverIp}
+      AND alert_type = 'obfuscation_bypass'
+      AND resolved = false
+      AND created_at > NOW() - INTERVAL '24 hours'
+    LIMIT 1
+  `;
+  
+  if (existingAlert.length === 0) {
+    // Create new alert
+    await sql`
+      INSERT INTO validation_alerts (
+        license_key,
+        server_ip,
+        alert_type,
+        alert_message,
+        severity,
+        auto_action
+      )
+      VALUES (
+        ${licenseKey},
+        ${serverIp},
+        'obfuscation_bypass',
+        ${`${validationCount} license validations without corresponding obfuscation validation`},
+        'critical',
+        'suspend'
+      )
+    `;
+    
+    console.log(`[Validation Tracking] CRITICAL: Obfuscation bypass detected for ${licenseKey} from ${serverIp}`);
   }
 }
 
