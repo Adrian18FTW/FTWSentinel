@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { initDb, getLicense, bindIp, touchLicense, logValidation } from '@/lib/db';
 import { signToken } from '@/lib/sign';
 import { withRateLimit, verifyHmac } from '@/lib/rate-limit';
+import { trackValidation, checkObfuscationBypass, executeAutoActions } from '@/lib/validation-tracking';
 
 const HMAC_SECRET = process.env.HMAC_SECRET ?? process.env.SIGNING_SECRET ?? '';
 
@@ -56,6 +57,23 @@ export async function POST(req: NextRequest) {
     const token = signToken(key, clientIp, new Date(license.expires_at));
     
     await logValidation(key, clientIp, file ?? '', 'success');
+    
+    // Track license validation
+    await trackValidation(key, clientIp, 'license', true);
+    
+    // Check for obfuscation bypass (license validated but obfuscation never called)
+    const bypassDetected = await checkObfuscationBypass(key, clientIp);
+    if (bypassDetected) {
+      // Execute auto-actions (suspend/revoke)
+      await executeAutoActions(key);
+      
+      // Return revoked status
+      return NextResponse.json({ 
+        valid: false, 
+        reason: 'security_violation', 
+        message: 'License suspended due to security violation' 
+      }, { status: 403 });
+    }
 
     return NextResponse.json({
       valid: true,

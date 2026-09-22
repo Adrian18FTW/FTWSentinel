@@ -31,6 +31,7 @@ import {
   isLicenseClaimed
 } from '@/lib/db';
 import { withRateLimit } from '@/lib/rate-limit';
+import { trackValidation } from '@/lib/validation-tracking';
 
 const KEY_TTL_SECONDS = 3600; // 1 hour
 
@@ -232,6 +233,9 @@ export async function POST(req: NextRequest) {
     // 7. Return deobfuscation key with TTL
     const now = Date.now();
     const keyExpiry = now + (KEY_TTL_SECONDS * 1000);
+
+    // Track obfuscation validation
+    await trackValidation(license_key, server_ip, 'obfuscation', true);
 
     return NextResponse.json({
       success: true,
