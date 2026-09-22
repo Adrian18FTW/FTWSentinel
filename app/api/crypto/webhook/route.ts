@@ -84,13 +84,11 @@ export async function POST(req: NextRequest) {
               </div>
             `,
           });
-          console.log(`[crypto/webhook] Email sent to ${order.email} for order ${payment_id}`);
         } catch (emailErr) {
           console.error('[crypto/webhook] Failed to send email:', emailErr);
         }
       }
 
-      console.log(`[crypto/webhook] License issued: ${key} for order ${payment_id}`);
     } else {
       await updateCryptoOrderStatus(String(payment_id), payment_status);
     }

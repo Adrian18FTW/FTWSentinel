@@ -15,8 +15,6 @@ export async function POST(req: NextRequest) {
     // Delete all errors from database
     await sql`DELETE FROM sentinel_errors`;
     
-    console.log('[Sentinel Errors] All errors cleared by admin');
-    
     return NextResponse.json({ 
       success: true, 
       message: 'All errors cleared'

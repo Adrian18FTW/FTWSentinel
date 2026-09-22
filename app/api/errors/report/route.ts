@@ -49,7 +49,6 @@ async function initErrorsTable() {
 // Simple HMAC verification to ensure requests come from legitimate FTWSentinel servers
 function verifyAuth(authHeader: string, serverIp: string, resourceName: string): boolean {
   if (!authHeader) {
-    console.log('[Auth] No auth header provided');
     return false;
   }
   
@@ -60,14 +59,8 @@ function verifyAuth(authHeader: string, serverIp: string, resourceName: string):
       .update(input)
       .digest('hex');
     
-    console.log('[Auth] Input:', input);
-    console.log('[Auth] Expected HMAC:', expectedHmac);
-    console.log('[Auth] Received HMAC:', authHeader);
-    console.log('[Auth] Match:', authHeader === expectedHmac);
-    
     return authHeader === expectedHmac;
   } catch (err) {
-    console.log('[Auth] Error:', err);
     return false;
   }
 }
@@ -109,8 +102,6 @@ export async function POST(req: NextRequest) {
         )
       `;
     }
-    
-    console.log(`[Sentinel Errors] Received ${body.errors.length} error(s) from ${body.serverIp}`);
     
     return NextResponse.json({
       success: true,

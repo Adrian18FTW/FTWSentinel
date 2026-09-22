@@ -45,9 +45,7 @@ export async function POST(req: NextRequest) {
     if (!license.ip_locked || license.ip === '') {
       await bindIp(key, clientIp);
       message = 'Activated';
-      console.log(`[validate] License ${key} activated — bound to ${clientIp}${file ? ` (file: ${file})` : ''}`);
     } else if (license.ip !== clientIp) {
-      console.warn(`[validate] IP mismatch for ${key} — bound: ${license.ip}, got: ${clientIp}${file ? ` (file: ${file})` : ''}`);
       return NextResponse.json({ valid: false, reason: 'ip_mismatch', message: `IP mismatch. Bound to ${license.ip}`, bound_ip: license.ip }, { status: 200 });
     } else {
       await touchLicense(key);
