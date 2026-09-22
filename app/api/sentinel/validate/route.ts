@@ -44,6 +44,10 @@ export async function GET() {
     message: 'Sentinel validation endpoint is active',
     method: 'POST',
     route: '/api/sentinel/validate'
+  }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    }
   });
 }
 
@@ -249,6 +253,10 @@ export async function POST(req: NextRequest) {
       key: download.obfuscation_key,
       ttl: KEY_TTL_SECONDS,
       key_expiry: keyExpiry
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      }
     });
 
   } catch (error) {
