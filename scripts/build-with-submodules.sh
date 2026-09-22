@@ -14,6 +14,11 @@ fi
 echo "📦 Cloning submodules..."
 git submodule update --init --recursive
 
+echo "📋 Ensuring WASM files are accessible..."
+# Copy WASM to public directory so it's included in the build
+mkdir -p public/wasm
+cp lib/obfuscator-wasm/*.wasm public/wasm/ 2>/dev/null || echo "WASM files already in place"
+
 echo "🔨 Building Next.js application..."
 npm run build
 
