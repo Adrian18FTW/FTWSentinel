@@ -30,12 +30,22 @@ import {
   getCustomerByEmail,
   getLatestDownload,
   logSecurityEvent,
-  isLicenseClaimed
+  isLicenseClaimed,
+  sql
 } from '@/lib/db';
 import { withRateLimit } from '@/lib/rate-limit';
 import { trackValidation } from '@/lib/validation-tracking';
 
 const KEY_TTL_SECONDS = 3600; // 1 hour
+
+// Add GET handler for debugging/health check
+export async function GET() {
+  return NextResponse.json({ 
+    message: 'Sentinel validation endpoint is active',
+    method: 'POST',
+    route: '/api/sentinel/validate'
+  });
+}
 
 export async function POST(req: NextRequest) {
   // Rate limiting (prevent brute force)
@@ -151,7 +161,6 @@ export async function POST(req: NextRequest) {
 
     // 4. Get the customer's latest download record
     // Query customer by license key from customers table
-    const { sql } = await import('@/lib/db');
     const customerRows = await sql`
       SELECT id FROM customers WHERE license_key = ${license_key} LIMIT 1
     `;
