@@ -56,14 +56,14 @@ export async function POST(req: NextRequest) {
     // Basic validation
     if (!license_key || typeof license_key !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Missing or invalid license_key' },
+        { valid: false, error: 'Missing or invalid license_key' },
         { status: 400 }
       );
     }
 
     if (!server_ip || typeof server_ip !== 'string') {
       return NextResponse.json(
-        { success: false, error: 'Missing or invalid server_ip' },
+        { valid: false, error: 'Missing or invalid server_ip' },
         { status: 400 }
       );
     }
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'Invalid or inactive license' },
+        { valid: false, error: 'Invalid or inactive license' },
         { status: 403 }
       );
     }
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'License is not active' },
+        { valid: false, error: 'License is not active' },
         { status: 403 }
       );
     }
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'License has expired' },
+        { valid: false, error: 'License has expired' },
         { status: 403 }
       );
     }
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
       
       return NextResponse.json(
         { 
-          success: false, 
+          valid: false, 
           error: `License is bound to IP ${license.ip}. Current IP: ${server_ip}` 
         },
         { status: 403 }
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'License not claimed by any customer' },
+        { valid: false, error: 'License not claimed by any customer' },
         { status: 404 }
       );
     }
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'Customer record not found for this license' },
+        { valid: false, error: 'Customer record not found for this license' },
         { status: 404 }
       );
     }
@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'No download record found for customer' },
+        { valid: false, error: 'No download record found for customer' },
         { status: 404 }
       );
     }
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
         
         return NextResponse.json(
           { 
-            success: false, 
+            valid: false, 
             error: 'Resource integrity check failed. Build may be tampered.' 
           },
           { status: 403 }
@@ -236,8 +236,8 @@ export async function POST(req: NextRequest) {
     await trackValidation(license_key, server_ip, 'obfuscation', true);
 
     return NextResponse.json({
-      success: true,
-      deobfuscation_key: download.obfuscation_key,
+      valid: true,
+      key: download.obfuscation_key,
       ttl: KEY_TTL_SECONDS,
       key_expiry: keyExpiry
     });
@@ -253,7 +253,7 @@ export async function POST(req: NextRequest) {
     );
     
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { valid: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
