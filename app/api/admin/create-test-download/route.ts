@@ -20,6 +20,18 @@ export async function POST(req: NextRequest) {
   try {
     await initDb();
     await initCustomers();
+    
+    // Initialize downloads table
+    await sql`
+      CREATE TABLE IF NOT EXISTS downloads (
+        id                SERIAL PRIMARY KEY,
+        customer_id       INTEGER      NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        obfuscation_key   VARCHAR(64)  NOT NULL,
+        ip_address        VARCHAR(64)  NOT NULL,
+        resource_hash     VARCHAR(128),
+        created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+      )
+    `;
 
     const { email } = await req.json();
 
