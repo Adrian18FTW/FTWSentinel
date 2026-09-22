@@ -3,7 +3,9 @@
  * Detects license key abuse and obfuscation bypass attempts
  */
 
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 // Ensure tables exist
 async function ensureTables() {
@@ -60,8 +62,11 @@ async function ensureTables() {
       CREATE INDEX IF NOT EXISTS idx_alerts_resolved 
       ON validation_alerts(resolved)
     `;
-  } catch (error) {
-    console.error('[Validation Tracking] Table creation error:', error);
+  } catch (error: any) {
+    // Ignore "already exists" errors
+    if (!error?.message?.includes('already exists')) {
+      console.error('[Validation Tracking] Table creation error:', error);
+    }
   }
 }
 
@@ -107,7 +112,7 @@ export async function checkObfuscationBypass(
         AND accessed_at > NOW() - INTERVAL '24 hours'
     `;
     
-    const licenseCount = parseInt(licenseResult.rows[0]?.count || '0');
+    const licenseCount = parseInt(licenseResult[0]?.count || '0');
     
     // Count obfuscation validations in last 24 hours
     const obfuscationResult = await sql`
@@ -119,7 +124,7 @@ export async function checkObfuscationBypass(
         AND accessed_at > NOW() - INTERVAL '24 hours'
     `;
     
-    const obfuscationCount = parseInt(obfuscationResult.rows[0]?.count || '0');
+    const obfuscationCount = parseInt(obfuscationResult[0]?.count || '0');
     
     // If license validated 5+ times but obfuscation never validated, flag it
     if (licenseCount >= 5 && obfuscationCount === 0) {
@@ -134,7 +139,7 @@ export async function checkObfuscationBypass(
         LIMIT 1
       `;
       
-      if (existingAlert.rows.length === 0) {
+      if (existingAlert.length === 0) {
         // Create new alert
         await sql`
           INSERT INTO validation_alerts (
@@ -183,7 +188,7 @@ export async function getUnresolvedAlerts(licenseKey: string) {
       ORDER BY created_at DESC
     `;
     
-    return result.rows;
+    return result;
   } catch (error) {
     console.error('[Validation Tracking] Get alerts error:', error);
     return [];
@@ -208,7 +213,7 @@ export async function executeAutoActions(licenseKey: string): Promise<void> {
       ORDER BY created_at DESC
     `;
     
-    for (const alert of alerts.rows) {
+    for (const alert of alerts) {
       if (alert.auto_action === 'suspend') {
         // Mark license as suspended in licenses table
         await sql`
@@ -260,7 +265,7 @@ export async function getValidationStats(licenseKey: string) {
       GROUP BY endpoint_type
     `;
     
-    return result.rows;
+    return result;
   } catch (error) {
     console.error('[Validation Tracking] Get stats error:', error);
     return [];
