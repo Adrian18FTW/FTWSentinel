@@ -685,7 +685,7 @@ export default function AdminPage() {
         </>
         )}
 
-        {tab === 'downloads' ? (
+        {tab === 'downloads' && (
           /* Admin Downloads Tab - Obfuscated Builds */
           <div className="space-y-6">
             {/* Warning Banner */}
