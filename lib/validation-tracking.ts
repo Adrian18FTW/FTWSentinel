@@ -126,8 +126,8 @@ export async function checkObfuscationBypass(
     
     const obfuscationCount = parseInt(obfuscationResult[0]?.count || '0');
     
-    // If license validated 5+ times but obfuscation never validated, flag it
-    if (licenseCount >= 5 && obfuscationCount === 0) {
+    // If license validated 2+ times but obfuscation never validated, flag it
+    if (licenseCount >= 2 && obfuscationCount === 0) {
       // Check if alert already exists
       const existingAlert = await sql`
         SELECT id FROM validation_alerts
