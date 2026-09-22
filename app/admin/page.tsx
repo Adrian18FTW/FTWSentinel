@@ -223,7 +223,7 @@ export default function AdminPage() {
                     tab === t ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
                   }`}
                 >
-                  {t === 'licenses' ? 'Licenses' : t === 'plans' ? 'Plans' : t === 'customers' ? 'Customers' : 'Global Product Errors'}
+                  {t === 'licenses' ? 'Licenses' : t === 'plans' ? 'Plans' : t === 'customers' ? 'Customers' : t === 'errors' ? 'Global Product Errors' : 'Downloads'}
                   {t === 'errors' && errorStats && errorStats.totalErrors > 0 && (
                     <span className="ml-2 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-xs font-bold">
                       {errorStats.totalErrors}
