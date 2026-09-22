@@ -14,12 +14,21 @@ fi
 echo "📦 Cloning submodules..."
 git submodule update --init --recursive
 
-echo "📋 Ensuring WASM files are accessible..."
-# Copy WASM to public directory so it's included in the build
+echo "📋 Pre-build: Copy WASM to ensure it's accessible..."
+# Ensure WASM files are in multiple locations for different build phases
 mkdir -p public/wasm
-cp lib/obfuscator-wasm/*.wasm public/wasm/ 2>/dev/null || echo "WASM files already in place"
+cp lib/obfuscator-wasm/*.wasm public/wasm/ 2>/dev/null || echo "WASM copy to public skipped"
 
 echo "🔨 Building Next.js application..."
 npm run build
+
+echo "📋 Post-build: Ensure WASM in server output..."
+# Copy WASM files into the Next.js server output where they can be accessed
+if [ -d ".next/server" ]; then
+  mkdir -p .next/server/lib/obfuscator-wasm
+  cp lib/obfuscator-wasm/*.wasm .next/server/lib/obfuscator-wasm/ 2>/dev/null || echo "WASM already in .next/server"
+  cp lib/obfuscator-wasm/*.js .next/server/lib/obfuscator-wasm/ 2>/dev/null || true
+  cp lib/obfuscator-wasm/*.d.ts .next/server/lib/obfuscator-wasm/ 2>/dev/null || true
+fi
 
 echo "✅ Build complete!"
