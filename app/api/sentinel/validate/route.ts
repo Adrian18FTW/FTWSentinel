@@ -150,18 +150,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Get the customer's latest download record
-    // We need to query by license key to find the customer
-    const customers = await getLicense(license_key).then(async (lic) => {
-      if (!lic) return null;
-      // Query all customers and find the one with this license
-      const { sql } = await import('@/lib/db');
-      const rows = await sql`
-        SELECT id FROM customers WHERE license_key = ${license_key} LIMIT 1
-      `;
-      return rows[0] || null;
-    });
+    // Query customer by license key from customers table
+    const { sql } = await import('@/lib/db');
+    const customerRows = await sql`
+      SELECT id FROM customers WHERE license_key = ${license_key} LIMIT 1
+    `;
 
-    if (!customers) {
+    if (!customerRows || customerRows.length === 0) {
       await logSecurityEvent(
         'KEY_REQUEST_NO_CUSTOMER',
         { license_key, server_ip },
@@ -169,19 +164,20 @@ export async function POST(req: NextRequest) {
       );
       
       return NextResponse.json(
-        { success: false, error: 'Customer record not found' },
+        { success: false, error: 'Customer record not found for this license' },
         { status: 404 }
       );
     }
 
-    const download = await getLatestDownload(customers.id);
+    const customerId = customerRows[0].id;
+    const download = await getLatestDownload(customerId);
 
     if (!download) {
       await logSecurityEvent(
         'KEY_REQUEST_NO_DOWNLOAD',
-        { customer_id: customers.id, license_key, server_ip },
+        { customer_id: customerId, license_key, server_ip },
         server_ip,
-        customers.id
+        customerId
       );
       
       return NextResponse.json(
@@ -198,12 +194,12 @@ export async function POST(req: NextRequest) {
           { 
             expected: download.resource_hash, 
             received: resource_hash,
-            customer_id: customers.id,
+            customer_id: customerId,
             license_key,
             server_ip
           },
           server_ip,
-          customers.id,
+          customerId,
           license_key
         );
         
@@ -221,14 +217,14 @@ export async function POST(req: NextRequest) {
     await logSecurityEvent(
       'KEY_REQUEST_SUCCESS',
       { 
-        customer_id: customers.id,
+        customer_id: customerId,
         license_key,
         server_ip,
         download_id: download.id,
         timestamp
       },
       server_ip,
-      customers.id,
+      customerId,
       license_key
     );
 
