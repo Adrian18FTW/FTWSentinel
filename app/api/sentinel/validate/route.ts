@@ -19,6 +19,8 @@
  *   key_expiry?: number,
  *   error?: string
  * }
+ * 
+ * Route: /api/sentinel/validate
  */
 
 import { NextRequest, NextResponse } from 'next/server';
