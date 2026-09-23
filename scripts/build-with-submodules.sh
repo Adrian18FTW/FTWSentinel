@@ -19,6 +19,11 @@ echo "📋 Pre-build: Copy WASM to ensure it's accessible..."
 mkdir -p public/wasm
 cp lib/obfuscator-wasm/*.wasm public/wasm/ 2>/dev/null || echo "WASM copy to public skipped"
 
+# Also copy to root lib location that Next.js will look for during build
+mkdir -p lib/obfuscator-wasm
+cp -f lib/obfuscator-wasm/*.wasm lib/obfuscator-wasm/ 2>/dev/null || true
+cp -f lib/obfuscator-wasm/*.js lib/obfuscator-wasm/ 2>/dev/null || true
+
 echo "🔨 Building Next.js application..."
 npm run build
 

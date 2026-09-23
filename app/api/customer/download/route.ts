@@ -14,7 +14,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
 import AdmZip from 'adm-zip';
-import * as obfuscator from '@/lib/obfuscator-wasm';
 import {
   createDownload,
   getCustomerById,
@@ -29,6 +28,10 @@ import {
   createFingerprintSummary
 } from '@/lib/fingerprint';
 import { getSession } from '@/lib/session';
+
+// Dynamic import of WASM to avoid build-time loading issues
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Paths
 const SOURCE_PATH = path.join(process.cwd(), 'source', 'FTWSentinel');
@@ -209,7 +212,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 9. Run WASM obfuscator
+    // 9. Run WASM obfuscator (dynamic import to avoid build-time issues)
+    const obfuscator = await import('@/lib/obfuscator-wasm');
+    
     const obfuscationRequest = {
       files: sourceFiles,
       encryption_key: obfuscationKey

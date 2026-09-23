@@ -15,7 +15,6 @@ import { exec } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import { existsSync } from 'fs';
-import * as obfuscator from '@/lib/obfuscator-wasm';
 import {
   createDownload,
   getCustomerByEmail,
@@ -27,6 +26,10 @@ import {
   generateResourceHash,
   createFingerprintSummary
 } from '@/lib/fingerprint';
+
+// Dynamic import of WASM to avoid build-time loading issues
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const execAsync = promisify(exec);
 
@@ -154,9 +157,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Run WASM obfuscator
+    // 6. Run WASM obfuscator (dynamic import to avoid build-time issues)
     console.log('[admin/downloads/generate] Running WASM obfuscator...');
     console.log('[admin/downloads/generate] Obfuscation key:', obfuscationKey.substring(0, 16) + '...');
+    
+    const obfuscator = await import('@/lib/obfuscator-wasm');
     
     const obfuscationRequest = {
       files: sourceFiles,
