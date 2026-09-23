@@ -95,13 +95,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Extract identifiers from request
-    const identifiers = extractIdentifiers(req, ADMIN_EMAIL, 1); // Admin is customer ID 1
+    // 2. Get admin customer record for identifiers
+    const adminCustomer = await getCustomerByEmail(ADMIN_EMAIL);
+    if (!adminCustomer) {
+      return NextResponse.json(
+        { error: 'Admin customer not found' },
+        { status: 500 }
+      );
+    }
+
+    // 3. Extract identifiers from request
+    const identifiers = extractIdentifiers(
+      req,
+      adminCustomer.email,
+      adminCustomer.id,
+      adminCustomer.license_key || 'ADMIN_NO_LICENSE',
+      adminCustomer.created_at
+    );
     
     console.log('[admin/downloads/generate] Starting build generation');
     console.log('[admin/downloads/generate] Fingerprint:', createFingerprintSummary(identifiers));
 
-    // 3. Generate obfuscation key
+    // 4. Generate obfuscation key
     const obfuscationKey = generateObfuscationKey(identifiers);
     console.log('[admin/downloads/generate] Obfuscation key:', obfuscationKey.substring(0, 16) + '...');
 

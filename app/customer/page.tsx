@@ -31,6 +31,7 @@ export default function CustomerDashboard() {
   const [license, setLicense] = useState<License | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     fetch('/api/customer/me')
@@ -49,6 +50,42 @@ export default function CustomerDashboard() {
     navigator.clipboard.writeText(license.key);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function downloadBuild() {
+    if (!license || downloading) return;
+    
+    setDownloading(true);
+    
+    try {
+      const response = await fetch('/api/customer/download', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Download failed');
+        setDownloading(false);
+        return;
+      }
+      
+      // Download the ZIP file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `FTWSentinel_${license.key}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setDownloading(false);
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Download failed. Please try again.');
+      setDownloading(false);
+    }
   }
 
   if (loading) {
@@ -107,6 +144,30 @@ export default function CustomerDashboard() {
                   </button>
                 </div>
               </div>
+              
+              {/* Download Button */}
+              {status === 'active' && (
+                <button 
+                  onClick={downloadBuild}
+                  disabled={downloading}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 disabled:from-zinc-700 disabled:to-zinc-800 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  {downloading ? (
+                    <>
+                      <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      <span>Generating Build...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>Download FTWSentinel</span>
+                    </>
+                  )}
+                </button>
+              )}
+              
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-black/20 rounded-xl px-4 py-3">
                   <p className="text-zinc-500 text-xs mb-1">Plan</p>

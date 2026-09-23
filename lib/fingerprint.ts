@@ -13,13 +13,20 @@ export interface CustomerIdentifiers {
   email: string;
   timestamp: number;
   customerId: number;
+  // Additional hard-to-steal identifiers
+  licenseKey: string;
+  accountCreatedAt: string;
+  requestPath: string;
+  acceptLanguage: string;
+  secChUa: string;
+  secChUaPlatform: string;
 }
 
 /**
  * Generates a SHA-256 obfuscation key from customer identifiers
  * 
  * Process:
- * 1. Stringify identifiers to JSON
+ * 1. Stringify identifiers to JSON (including hard-to-steal data)
  * 2. Base64 encode the JSON
  * 3. SHA-256 hash the base64 string
  * 
@@ -28,10 +35,17 @@ export interface CustomerIdentifiers {
  */
 export function generateObfuscationKey(identifiers: CustomerIdentifiers): string {
   // Step 1: Create deterministic JSON string (sorted keys for consistency)
+  // Include all identifiers to make key harder to steal/reproduce
   const raw = JSON.stringify({
+    acceptLanguage: identifiers.acceptLanguage,
+    accountCreatedAt: identifiers.accountCreatedAt,
     customerId: identifiers.customerId,
     email: identifiers.email,
     ip: identifiers.ip,
+    licenseKey: identifiers.licenseKey,
+    requestPath: identifiers.requestPath,
+    secChUa: identifiers.secChUa,
+    secChUaPlatform: identifiers.secChUaPlatform,
     timestamp: identifiers.timestamp,
     userAgent: identifiers.userAgent
   });
@@ -71,12 +85,16 @@ export function verifyObfuscationKey(
  * @param req - Next.js request object
  * @param email - Customer email
  * @param customerId - Customer database ID
+ * @param licenseKey - Customer license key
+ * @param accountCreatedAt - When customer account was created (ISO string)
  * @returns CustomerIdentifiers object
  */
 export function extractIdentifiers(
   req: Request,
   email: string,
-  customerId: number
+  customerId: number,
+  licenseKey: string,
+  accountCreatedAt: string
 ): CustomerIdentifiers {
   // Extract IP from headers (Vercel provides x-forwarded-for)
   const forwardedFor = req.headers.get('x-forwarded-for');
@@ -87,6 +105,17 @@ export function extractIdentifiers(
   // Extract user agent
   const userAgent = req.headers.get('user-agent') || 'unknown';
 
+  // Extract browser fingerprint headers (Chromium-based browsers)
+  const secChUa = req.headers.get('sec-ch-ua') || 'unknown';
+  const secChUaPlatform = req.headers.get('sec-ch-ua-platform') || 'unknown';
+  
+  // Extract language preferences
+  const acceptLanguage = req.headers.get('accept-language') || 'unknown';
+  
+  // Extract request path for additional entropy
+  const url = new URL(req.url);
+  const requestPath = url.pathname;
+
   // Current timestamp
   const timestamp = Date.now();
 
@@ -95,7 +124,13 @@ export function extractIdentifiers(
     userAgent,
     email,
     timestamp,
-    customerId
+    customerId,
+    licenseKey,
+    accountCreatedAt,
+    requestPath,
+    acceptLanguage,
+    secChUa,
+    secChUaPlatform
   };
 }
 
