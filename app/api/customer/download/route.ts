@@ -77,8 +77,7 @@ async function writeObfuscatedFiles(
 export async function POST(req: NextRequest) {
   try {
     // 1. Verify customer authentication
-    const session = await getSession(req);
-    const customerId = session?.id;
+    const customerId = await getSession();
     
     if (!customerId) {
       return NextResponse.json(
