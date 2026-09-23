@@ -30,10 +30,16 @@ npm run build
 echo "📋 Post-build: Ensure WASM in server output..."
 # Copy WASM files into the Next.js server output where they can be accessed
 if [ -d ".next/server" ]; then
+  # Find all turbopack chunks that reference the obfuscator
   mkdir -p .next/server/lib/obfuscator-wasm
-  cp lib/obfuscator-wasm/*.wasm .next/server/lib/obfuscator-wasm/ 2>/dev/null || echo "WASM already in .next/server"
+  
+  # Copy WASM and JS files
+  cp lib/obfuscator-wasm/*.wasm .next/server/lib/obfuscator-wasm/ 2>/dev/null || echo "WASM copy to .next/server failed"
   cp lib/obfuscator-wasm/*.js .next/server/lib/obfuscator-wasm/ 2>/dev/null || true
   cp lib/obfuscator-wasm/*.d.ts .next/server/lib/obfuscator-wasm/ 2>/dev/null || true
+  
+  # Also copy to root of .next/server for /ROOT path resolution
+  cp lib/obfuscator-wasm/*.wasm .next/server/ 2>/dev/null || echo "WASM copy to .next/server root skipped"
 fi
 
 echo "✅ Build complete!"
