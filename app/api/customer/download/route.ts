@@ -344,6 +344,9 @@ export async function POST(req: NextRequest) {
         customerId,
         obfuscationKey,
         identifiers.ip,
+        identifiers.userAgent,
+        customer.email,
+        new Date(),
         resourceHash
       );
     } catch (error) {
