@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
     let obfuscatedFiles: Record<string, string>;
     
     try {
-      const result = obfuscator.obfuscate_multi_file(JSON.stringify(obfuscationRequest));
+      const result = obfuscator.obfuscate_files(JSON.stringify(obfuscationRequest));
       
       obfuscatedFiles = result.files;
       
