@@ -218,11 +218,16 @@ export async function POST(req: NextRequest) {
     let obfuscatedFiles: Record<string, string>;
     
     try {
-      const result = obfuscator.obfuscate_files(JSON.stringify(obfuscationRequest));
+      const resultJson = obfuscator.obfuscate_files(JSON.stringify(obfuscationRequest));
+      const result = JSON.parse(resultJson);
+      
+      if (!result.success) {
+        throw new Error('Obfuscation failed: ' + (result.errors?.join(', ') || 'Unknown error'));
+      }
       
       obfuscatedFiles = result.files;
       
-      if (result.errors.length > 0) {
+      if (result.errors && result.errors.length > 0) {
         console.error('[customer/download] Obfuscation warnings:', result.errors);
         
         await logSecurityEvent(
