@@ -1,6 +1,6 @@
 {
   "name": "ftwsentinel-obfuscator",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "files": [
     "obfuscator_lib_bg.wasm",
     "obfuscator_lib.js",

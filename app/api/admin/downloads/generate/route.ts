@@ -161,6 +161,13 @@ export async function POST(req: NextRequest) {
     console.log('[admin/downloads/generate] Running WASM obfuscator...');
     console.log('[admin/downloads/generate] Obfuscation key:', obfuscationKey.substring(0, 16) + '...');
     
+    // Force module reload by clearing cache
+    const wasmModulePath = require.resolve('@/lib/obfuscator-wasm');
+    if (require.cache[wasmModulePath]) {
+      console.log('[admin/downloads/generate] Clearing cached WASM module');
+      delete require.cache[wasmModulePath];
+    }
+    
     const obfuscator = await import('@/lib/obfuscator-wasm');
     
     const obfuscationRequest = {
