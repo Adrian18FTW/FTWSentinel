@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 9. Run WASM obfuscator (dynamic import to avoid build-time issues)
-    const obfuscator = await import('@/lib/obfuscator-wasm');
+    const obfuscator = await import('../../../../../lib/wasm/obfuscator_lib.js');
     
     const obfuscationRequest = {
       files: sourceFiles,

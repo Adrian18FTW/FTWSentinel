@@ -35,10 +35,6 @@ mkdir -p public/wasm
 cp -v lib/wasm/*.wasm public/wasm/ 2>/dev/null || echo "WASM copy to public skipped"
 cp -v lib/wasm/*.js public/wasm/ 2>/dev/null || true
 
-# Create symlink for obfuscator-wasm to point to wasm directory
-rm -rf lib/obfuscator-wasm 2>/dev/null || true
-ln -sf wasm lib/obfuscator-wasm
-
 echo "🔨 Building Next.js application..."
 npm run build
 
