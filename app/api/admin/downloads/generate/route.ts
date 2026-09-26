@@ -168,7 +168,7 @@ export async function POST(req: NextRequest) {
       delete require.cache[wasmModulePath];
     }
     
-    const obfuscator = await import('../../../../../../lib/wasm/obfuscator_lib.js');
+    const obfuscator = await import('@/lib/wasm/obfuscator_lib.js');
     
     const obfuscationRequest = {
       files: sourceFiles,
