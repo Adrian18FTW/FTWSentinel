@@ -9,8 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 
+const sql = neon(process.env.DATABASE_URL!);
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
 // Period durations in milliseconds
@@ -40,30 +41,30 @@ export async function POST(req: NextRequest) {
     }
 
     // Get customer and their license
-    const customerResult = await sql`
+    const customers = await sql`
       SELECT id, license_key FROM customers WHERE id = ${customerId}
     `;
 
-    if (customerResult.rows.length === 0) {
+    if (customers.length === 0) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
-    const customer = customerResult.rows[0];
+    const customer = customers[0];
 
     if (!customer.license_key) {
       return NextResponse.json({ error: 'Customer has no license' }, { status: 400 });
     }
 
     // Get the license details
-    const licenseResult = await sql`
+    const licenses = await sql`
       SELECT id, expires_at, active FROM licenses WHERE key = ${customer.license_key}
     `;
 
-    if (licenseResult.rows.length === 0) {
+    if (licenses.length === 0) {
       return NextResponse.json({ error: 'License not found' }, { status: 404 });
     }
 
-    const license = licenseResult.rows[0];
+    const license = licenses[0];
 
     // Calculate new expiry date
     // If license is expired, start from now. If active, extend from current expiry
