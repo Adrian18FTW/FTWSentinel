@@ -67,6 +67,8 @@ export default function AdminPage() {
   const [errorFilter, setErrorFilter] = useState('');
   const [selectedServer, setSelectedServer] = useState<string>('all');
   const [expandedError, setExpandedError] = useState<string | null>(null);
+  const [renewPeriods, setRenewPeriods] = useState<Record<number, string>>({});
+  const [renewingCustomer, setRenewingCustomer] = useState<number | null>(null);
 
   const fetchLicenses = useCallback(async (s: string) => {
     const res = await fetch('/api/licenses', { headers: { 'x-admin-secret': s } });
@@ -112,6 +114,34 @@ export default function AdminPage() {
     });
     fetchCustomers(secret);
     fetchLicenses(secret);
+  };
+
+  const renewLicense = async (customerId: number) => {
+    const period = renewPeriods[customerId] || '1month';
+    setRenewingCustomer(customerId);
+    
+    try {
+      const res = await fetch('/api/admin/customers/renew', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
+        body: JSON.stringify({ customerId, period }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.message || 'License renewed successfully');
+        fetchCustomers(secret);
+        fetchLicenses(secret);
+      } else {
+        alert(data.error || 'Failed to renew license');
+      }
+    } catch (error) {
+      console.error('Renewal error:', error);
+      alert('Failed to renew license. Please try again.');
+    } finally {
+      setRenewingCustomer(null);
+    }
   };
 
   const fetchPlans = useCallback(async () => {
@@ -455,34 +485,72 @@ export default function AdminPage() {
                     <th className="text-left px-4 py-3">License Key</th>
                     <th className="text-left px-4 py-3">Registered</th>
                     <th className="text-left px-4 py-3">Status</th>
+                    <th className="text-left px-4 py-3">Renew License</th>
                     <th className="text-left px-4 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map(c => (
-                    <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                      <td className="px-4 py-3 text-white text-xs">{c.email}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-blue-300">{c.license_key ?? <span className="text-gray-500">—</span>}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.suspended ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
-                          {c.suspended ? 'suspended' : 'active'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          {c.suspended ? (
-                            <button onClick={() => customerAction(c.id, 'unsuspend')} className="text-green-400 hover:text-green-300 text-xs">Unsuspend</button>
+                  {customers.map(c => {
+                    const customerLicense = licenses.find(l => l.key === c.license_key);
+                    const hasLicense = !!customerLicense;
+                    const isExpired = customerLicense ? new Date(customerLicense.expires_at) <= new Date() : false;
+                    
+                    return (
+                      <tr key={c.id} className="border-b border-gray-800 hover:bg-gray-800/50">
+                        <td className="px-4 py-3 text-white text-xs">{c.email}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-blue-300">
+                          {c.license_key ?? <span className="text-gray-500">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-400 text-xs">{new Date(c.created_at).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.suspended ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>
+                            {c.suspended ? 'suspended' : 'active'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {hasLicense ? (
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={renewPeriods[c.id] || '1month'}
+                                onChange={e => setRenewPeriods({ ...renewPeriods, [c.id]: e.target.value })}
+                                className="bg-gray-800 border border-gray-700 text-white rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                                disabled={renewingCustomer === c.id}
+                              >
+                                <option value="1month">+1 Month</option>
+                                <option value="3month">+3 Months</option>
+                                <option value="6month">+6 Months</option>
+                              </select>
+                              <button
+                                onClick={() => renewLicense(c.id)}
+                                disabled={renewingCustomer === c.id}
+                                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                                  isExpired 
+                                    ? 'bg-yellow-600 hover:bg-yellow-500 text-white' 
+                                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {renewingCustomer === c.id ? '...' : (isExpired ? 'Reactivate' : 'Extend')}
+                              </button>
+                            </div>
                           ) : (
-                            <button onClick={() => { if (confirm('Suspend this account and revoke their license?')) customerAction(c.id, 'suspend'); }} className="text-yellow-400 hover:text-yellow-300 text-xs">Suspend</button>
+                            <span className="text-gray-500 text-xs">No license</span>
                           )}
-                          <button onClick={() => { if (confirm('Delete this account permanently?')) customerAction(c.id, 'delete'); }} className="text-red-400 hover:text-red-300 text-xs">Delete</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            {c.suspended ? (
+                              <button onClick={() => customerAction(c.id, 'unsuspend')} className="text-green-400 hover:text-green-300 text-xs">Unsuspend</button>
+                            ) : (
+                              <button onClick={() => { if (confirm('Suspend this account and revoke their license?')) customerAction(c.id, 'suspend'); }} className="text-yellow-400 hover:text-yellow-300 text-xs">Suspend</button>
+                            )}
+                            <button onClick={() => { if (confirm('Delete this account permanently?')) customerAction(c.id, 'delete'); }} className="text-red-400 hover:text-red-300 text-xs">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {customers.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
                   )}
                 </tbody>
               </table>
